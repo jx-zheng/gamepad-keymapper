@@ -16,3 +16,10 @@ jobs:
         run: swift test
       - name: Security scan
         run: bash Scripts/security-scan.sh
+
+  macos-build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: xcodebuild -project GamepadKeymapper.xcodeproj -scheme GamepadKeymapper -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO build

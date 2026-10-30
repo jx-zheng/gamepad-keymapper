@@ -144,6 +144,22 @@ final class ProfileTests: XCTestCase {
         XCTAssertFalse(ProfileSanitizer.isBundleIdentifier("not a bundle"))
     }
 
+    func testSnippetWarningsAndSingleDefault() throws {
+        var profile = Profile.starter(name: "Text", isDefault: true)
+        profile.layers[0].bindings[0].action = .typeText("hello\n")
+        profile.layers[0].bindings[1].action = .typeText("echo $(whoami)\nmore")
+        var other = Profile.starter(name: "Also", isDefault: true)
+        let report = try ProfileSanitizer.sanitize(ProfileDocument(profiles: [profile, other]))
+        if case .typeText(let text) = report.document.profiles[0].layers[0].bindings[0].action {
+            XCTAssertEqual(text, "hello")
+        } else {
+            XCTFail("Expected typed text")
+        }
+        XCTAssertTrue(report.warnings.contains { $0.contains("line break") })
+        XCTAssertTrue(report.warnings.contains { $0.contains("shell") })
+        XCTAssertEqual(report.document.profiles.filter(\.isDefault).count, 1)
+    }
+
     func testHardCaps() throws {
         XCTAssertThrowsError(try ProfileSanitizer.checkByteCount(ProfileSanitizer.maxBytes + 1))
         let profiles = (0..<41).map { Profile.starter(name: "P\($0)", isDefault: $0 == 0) }

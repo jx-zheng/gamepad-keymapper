@@ -30,6 +30,8 @@ struct MappingInterpreter {
     private struct RadialSession: Equatable {
         var controller: String
         var menuID: UUID
+        /// The button that opened the menu. Later edits to the profile must not change which release closes it.
+        var triggerID: String
         var selection: Int?
     }
 
@@ -39,7 +41,6 @@ struct MappingInterpreter {
     }
 
     private var debouncers: [DebouncerKey: ButtonDebouncer] = [:]
-    private var categories: [String: String] = [:]
     private var held: [String: Set<String>] = [:]
     private var toggled: [String: Set<UUID>] = [:]
     private var openHolds: [String: MapperAction] = [:]
@@ -97,9 +98,6 @@ struct MappingInterpreter {
         time: TimeInterval,
         profile: Profile
     ) -> [EngineEffect] {
-        if let category {
-            categories[controller] = category
-        }
         let key = DebouncerKey(controller: controller, button: button.id)
         var debouncer = debouncers[key] ?? ButtonDebouncer(interval: debounce)
         debouncer.interval = debounce
@@ -108,7 +106,7 @@ struct MappingInterpreter {
         guard let pressed = edge else { return [] }
         return apply(
             controller: controller,
-            category: categories[controller],
+            category: nil,
             button: button,
             pressed: pressed,
             time: time,
@@ -130,7 +128,7 @@ struct MappingInterpreter {
             if let pressed = edge {
                 effects += apply(
                     controller: key.controller,
-                    category: categories[key.controller],
+                    category: nil,
                     button: ControllerButton(id: key.button),
                     pressed: pressed,
                     time: time,
@@ -165,9 +163,6 @@ struct MappingInterpreter {
         time: TimeInterval,
         profile: Profile
     ) -> [EngineEffect] {
-        if let category {
-            categories[controller] = category
-        }
         let x = min(1, max(-1, x))
         let y = min(1, max(-1, y))
 
@@ -256,7 +251,6 @@ struct MappingInterpreter {
         }
         held[controller] = nil
         toggled[controller] = nil
-        categories[controller] = nil
         sticks[controller] = nil
         debouncers = debouncers.filter { $0.key.controller != controller }
         lastStickSample = lastStickSample.filter { !$0.key.hasPrefix(prefix) }
@@ -301,7 +295,6 @@ struct MappingInterpreter {
         toggled.removeAll()
         debouncers.removeAll()
         sticks.removeAll()
-        categories.removeAll()
         lastStickSample.removeAll()
         lastPointerTime = nil
         return effects
@@ -443,11 +436,11 @@ struct MappingInterpreter {
                     }
                     return []
                 }
-                if pressed && button.id == "b" && menu.trigger.id != "b" {
+                if pressed && button.id == "b" && session.triggerID != "b" {
                     radial = nil
                     return [.hideRadial]
                 }
-                if !pressed && button.id == menu.trigger.id {
+                if !pressed && button.id == session.triggerID {
                     let action = session.selection.flatMap { index -> MapperAction? in
                         guard menu.items.indices.contains(index) else { return nil }
                         return menu.items[index].action
@@ -473,7 +466,7 @@ struct MappingInterpreter {
 
         if pressed {
             if let menu = profile.radialMenus.first(where: { $0.trigger.id == button.id }) {
-                radial = RadialSession(controller: controller, menuID: menu.id, selection: nil)
+                radial = RadialSession(controller: controller, menuID: menu.id, triggerID: button.id, selection: nil)
                 var effects: [EngineEffect] = [.showRadial(menu, selection: nil)]
                 if let side = aimingStick(menu.selection) {
                     effects += releaseLatchedStick(

@@ -219,8 +219,23 @@ final class InputSynthesizer {
     private func postKey(_ code: CGKeyCode, down: Bool, flags: CGEventFlags) {
         let source = CGEventSource(stateID: .hidSystemState)
         guard let event = CGEvent(keyboardEventSource: source, virtualKey: code, keyDown: down) else { return }
-        event.flags = flags.union(heldModifierFlags())
+        var merged = flags.union(heldModifierFlags())
+        if !down, let own = modifierFlag(for: code) {
+            merged.remove(own)
+        }
+        event.flags = merged
         event.post(tap: .cghidEventTap)
+    }
+
+    private func modifierFlag(for code: CGKeyCode) -> CGEventFlags? {
+        switch code {
+        case 55: return .maskCommand
+        case 56: return .maskShift
+        case 58: return .maskAlternate
+        case 59: return .maskControl
+        case 63: return .maskSecondaryFn
+        default: return nil
+        }
     }
 
     /// Modifiers currently held by a controller chord, so a later Tab or click keeps Command/Shift.

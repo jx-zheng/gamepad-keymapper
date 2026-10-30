@@ -301,7 +301,7 @@ private struct BindingsTab: View {
         )
     }
 
-    private func inspector(layer: Layer, binding: Binding) -> some View {
+    private func inspector(layer: Layer, binding: ButtonBinding) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 Text(binding.button.displayName)

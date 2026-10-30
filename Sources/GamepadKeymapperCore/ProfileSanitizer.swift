@@ -46,6 +46,13 @@ enum ProfileSanitizer {
             seenProfileIDs.insert(profile.id)
             profiles.append(try sanitizeProfile(&profile, warnings: &warnings))
         }
+        let defaultIndexes = profiles.indices.filter { profiles[$0].isDefault }
+        if defaultIndexes.count > 1 {
+            for index in defaultIndexes.dropFirst() {
+                profiles[index].isDefault = false
+            }
+            warnings.append("Only one profile can be the default. Extra defaults were turned off.")
+        }
         return Report(document: ProfileDocument(profiles: profiles), warnings: warnings)
     }
 
@@ -172,6 +179,15 @@ enum ProfileSanitizer {
             for scalar in text.prefix(maxSnippetLength).unicodeScalars where scalar.value >= 32 || scalar.value == 9 || scalar.value == 10 {
                 cleaned.unicodeScalars.append(scalar)
             }
+            while cleaned.hasSuffix("\n") || cleaned.hasSuffix("\r") {
+                cleaned.removeLast()
+            }
+            if cleaned.contains("\n") || cleaned.contains("\r") {
+                warnings.append("A text snippet contains a line break. It is still typed as text.")
+            }
+            if Self.looksShellish(cleaned) {
+                warnings.append("A text snippet looks like a shell command. It is typed as text and is not run.")
+            }
             action = .typeText(cleaned)
         case .shortcut(let name):
             let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -245,6 +261,11 @@ enum ProfileSanitizer {
         let parts = path.split(separator: "/")
         guard !parts.contains(".."), !parts.contains(".") else { return false }
         return path.hasSuffix(".app") || path.contains(".app/")
+    }
+
+    private static func looksShellish(_ text: String) -> Bool {
+        let markers = ["$(", "`", "rm -rf", "sudo ", "&&", "||", "/bin/"]
+        return markers.contains { text.contains($0) }
     }
 
     private static func isSingleLine(_ text: String) -> Bool {

@@ -154,15 +154,9 @@ final class ControllerMonitor: NSObject {
 
     fileprivate func enqueueEdge(_ edge: InputBatch.Edge) {
         lock.lock()
-        if pendingEdges.count >= 64 {
-            var latest: [String: InputBatch.Edge] = [:]
-            for existing in pendingEdges {
-                latest["\(existing.sessionID)|\(existing.button.id)"] = existing
-            }
-            latest["\(edge.sessionID)|\(edge.button.id)"] = edge
-            pendingEdges = Array(latest.values)
-        } else {
-            pendingEdges.append(edge)
+        pendingEdges.append(edge)
+        if pendingEdges.count > 64 {
+            pendingEdges = Self.collapseEdges(pendingEdges)
         }
         scheduleDrainLocked()
         lock.unlock()
@@ -204,6 +198,39 @@ final class ControllerMonitor: NSObject {
         lock.unlock()
         guard !batch.edges.isEmpty || !batch.sticks.isEmpty || !batch.motion.isEmpty else { return }
         onBatch?(batch)
+    }
+
+    /// Coalesce repeated samples but keep press/release pairs, in arrival order.
+    private static func collapseEdges(_ edges: [InputBatch.Edge]) -> [InputBatch.Edge] {
+        var collapsed: [InputBatch.Edge] = []
+        var lastIndex: [String: Int] = [:]
+        for edge in edges {
+            let key = "\(edge.sessionID)|\(edge.button.id)"
+            if let index = lastIndex[key], collapsed[index].pressed == edge.pressed {
+                collapsed[index] = edge
+            } else {
+                lastIndex[key] = collapsed.count
+                collapsed.append(edge)
+            }
+        }
+        guard collapsed.count > 64 else { return collapsed }
+        var drop = Set<Int>()
+        var index = 0
+        while collapsed.count - drop.count > 64, index < collapsed.count {
+            if !drop.contains(index), collapsed[index].pressed {
+                let key = "\(collapsed[index].sessionID)|\(collapsed[index].button.id)"
+                if let release = (index + 1..<collapsed.count).first(where: { offset in
+                    !drop.contains(offset)
+                        && !collapsed[offset].pressed
+                        && "\(collapsed[offset].sessionID)|\(collapsed[offset].button.id)" == key
+                }) {
+                    drop.insert(index)
+                    drop.insert(release)
+                }
+            }
+            index += 1
+        }
+        return collapsed.enumerated().compactMap { drop.contains($0.offset) ? nil : $0.element }
     }
 
     private func assignPlayerIndex(_ controller: GCController) {
@@ -283,44 +310,51 @@ private final class ControllerSession {
 
     func setMotionHandler(enabled: Bool) {
         lock.lock()
-        defer { lock.unlock() }
-        guard enabled != motionInstalled else { return }
-        motionInstalled = enabled
-        guard let motion = controller.motion else { return }
-        if motion.sensorsRequireManualActivation {
-            motion.sensorsActive = enabled
+        guard enabled != motionInstalled else {
+            lock.unlock()
+            return
         }
-        if enabled {
-            motion.valueChangedHandler = { [weak self] motion in
-                guard let self, motion.hasAttitudeAndRotationRate else { return }
-                let rate = motion.rotationRate
-                self.owner?.enqueueMotion(InputBatch.Motion(
-                    sessionID: self.sessionID,
-                    category: self.category,
-                    rotationX: rate.x,
-                    rotationY: rate.y,
-                    time: CACurrentMediaTime()
-                ))
+        motionInstalled = enabled
+        lock.unlock()
+        onHandlerQueue { [weak self] in
+            guard let self, let motion = self.controller.motion else { return }
+            if motion.sensorsRequireManualActivation {
+                motion.sensorsActive = enabled
             }
-        } else {
-            motion.valueChangedHandler = nil
+            if enabled {
+                motion.valueChangedHandler = { [weak self] motion in
+                    guard let self, motion.hasAttitudeAndRotationRate else { return }
+                    let rate = motion.rotationRate
+                    self.owner?.enqueueMotion(InputBatch.Motion(
+                        sessionID: self.sessionID,
+                        category: self.category,
+                        rotationX: rate.x,
+                        rotationY: rate.y,
+                        time: CACurrentMediaTime()
+                    ))
+                }
+            } else {
+                motion.valueChangedHandler = nil
+            }
         }
     }
 
     func detach() {
         lock.lock()
         motionInstalled = false
-        let motion = controller.motion
         let buttons = self.buttons
         let dpads = self.dpads
         self.buttons.removeAll()
         self.dpads.removeAll()
         lock.unlock()
-        if let motion {
-            if motion.sensorsRequireManualActivation {
-                motion.sensorsActive = false
+        if controller.motion != nil {
+            onHandlerQueue { [weak self] in
+                guard let self, let motion = self.controller.motion else { return }
+                if motion.sensorsRequireManualActivation {
+                    motion.sensorsActive = false
+                }
+                motion.valueChangedHandler = nil
             }
-            motion.valueChangedHandler = nil
         }
         for button in buttons {
             button.pressedChangedHandler = nil
@@ -334,6 +368,9 @@ private final class ControllerSession {
     private func bind(_ input: GCControllerButtonInput, to button: ControllerButton) {
         guard bound.insert(button.id).inserted else { return }
         buttons.append(input)
+        if button.id == ControllerButton.home.id || button.id == ControllerButton.options.id {
+            input.preferredSystemGestureState = .disabled
+        }
         input.pressedChangedHandler = { [weak self] _, _, pressed in
             guard let self else { return }
             self.owner?.enqueueEdge(InputBatch.Edge(
@@ -363,14 +400,24 @@ private final class ControllerSession {
     }
 
     func batteryDescription() -> String? {
-        guard let battery = controller.battery else { return nil }
-        switch battery.batteryState {
-        case .charging, .discharging, .full:
-            let percent = Int((battery.batteryLevel * 100).rounded())
-            return "\(percent)%"
-        default:
-            return nil
+        onHandlerQueue {
+            guard let battery = self.controller.battery else { return nil }
+            switch battery.batteryState {
+            case .charging, .discharging, .full:
+                let percent = Int((battery.batteryLevel * 100).rounded())
+                return "\(percent)%"
+            default:
+                return nil
+            }
         }
+    }
+
+    private func onHandlerQueue<T>(_ body: @escaping () -> T) -> T {
+        let queue = controller.handlerQueue
+        if queue === DispatchQueue.main, Thread.isMainThread {
+            return body()
+        }
+        return queue.sync(execute: body)
     }
 
     private static func logicalButton(forGCName name: String) -> ControllerButton {

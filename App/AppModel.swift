@@ -47,6 +47,7 @@ final class AppModel: ObservableObject {
     /// True when the on-disk profile file could not be read, so autosave stays off.
     @Published private(set) var savesDisabled = false
     private var suppressAutosave = false
+    private var archiveUnreadableOnNextSave = false
     private var sleepObserver: NSObjectProtocol?
     private var activeObserver: NSObjectProtocol?
 
@@ -55,6 +56,8 @@ final class AppModel: ObservableObject {
         self.store = store
         var loadedSettings = AppSettings.initial
         var loadedDocument = SampleProfiles.document()
+        var failedToLoadProfiles = false
+        var loadFailureMessage: String?
         do {
             loadedSettings = try store.loadSettings()
         } catch {
@@ -64,9 +67,8 @@ final class AppModel: ObservableObject {
             loadedDocument = try store.loadDocument()
         } catch {
             loadedDocument = SampleProfiles.document()
-            suppressAutosave = true
-            savesDisabled = true
-            alertMessage = "Couldn’t read saved profiles (\(error.localizedDescription)). The file on disk was left unchanged."
+            failedToLoadProfiles = true
+            loadFailureMessage = "Couldn’t read saved profiles (\(error.localizedDescription)). The file on disk was left unchanged."
         }
         if loadedDocument.profiles.isEmpty {
             loadedDocument = SampleProfiles.document()
@@ -79,6 +81,10 @@ final class AppModel: ObservableObject {
         } else {
             sidebar = .permissions
         }
+        suppressAutosave = failedToLoadProfiles
+        savesDisabled = failedToLoadProfiles
+        archiveUnreadableOnNextSave = failedToLoadProfiles
+        alertMessage = loadFailureMessage
         AppModel.shared = self
         wireEngine()
         frontmost.onChange = { [weak self] bundle, name in
@@ -379,16 +385,20 @@ final class AppModel: ObservableObject {
             let data = try Data(contentsOf: url)
             let report = try ProfileCodec.importDocument(data)
             var merged = document
+            var collisionWarnings: [String] = []
             for profile in report.document.profiles {
-                if let index = merged.profiles.firstIndex(where: { $0.id == profile.id }) {
-                    merged.profiles[index] = profile
+                if merged.profiles.contains(where: { $0.id == profile.id }) {
+                    var copy = profile
+                    copy.id = UUID()
+                    merged.profiles.append(copy)
+                    collisionWarnings.append("“\(profile.name)” was imported with a new id because that id is already in use.")
                 } else {
                     merged.profiles.append(profile)
                 }
             }
             let sanitized = try ProfileSanitizer.sanitize(merged)
             document = sanitized.document
-            importWarnings = report.warnings + sanitized.warnings
+            importWarnings = report.warnings + collisionWarnings + sanitized.warnings
             if !importWarnings.isEmpty {
                 alertMessage = importWarnings.prefix(4).joined(separator: "\n")
             }
@@ -416,6 +426,12 @@ final class AppModel: ObservableObject {
     }
 
     func resetToSample() {
+        let alert = NSAlert()
+        alert.messageText = "Restore sample profiles?"
+        alert.informativeText = "This replaces the profiles in the editor. If the saved file could not be read, a copy is kept beside it before anything new is written."
+        alert.addButton(withTitle: "Restore Sample")
+        alert.addButton(withTitle: "Cancel")
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
         document = SampleProfiles.document()
         settings.profileOverrideID = nil
         suppressAutosave = false
@@ -479,6 +495,10 @@ final class AppModel: ObservableObject {
 
     private func persistNow() {
         guard !suppressAutosave else { return }
+        if archiveUnreadableOnNextSave {
+            archiveUnreadableProfiles()
+            archiveUnreadableOnNextSave = false
+        }
         do {
             // Sanitize the bytes written to disk. Do not write that copy back into the
             // live document, or a half-typed bundle id or name is trimmed mid-edit.
@@ -487,6 +507,15 @@ final class AppModel: ObservableObject {
         } catch {
             statusMessage = "Couldn’t save profiles."
         }
+    }
+
+    private func archiveUnreadableProfiles() {
+        let source = store.profilesURL
+        guard FileManager.default.fileExists(atPath: source.path) else { return }
+        let stamp = ISO8601DateFormatter().string(from: Date()).replacingOccurrences(of: ":", with: "-")
+        let destination = source.deletingLastPathComponent()
+            .appendingPathComponent("profiles.unreadable-\(stamp).json")
+        try? FileManager.default.copyItem(at: source, to: destination)
     }
 
     private func pushProfile() {

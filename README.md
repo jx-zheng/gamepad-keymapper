@@ -34,15 +34,13 @@ Requirements: macOS 14 or later, and Xcode 15 or later.
 3. The app is a menu-bar item (`LSUIElement`). Open **Editor** from the menu if the window does not appear.
 4. On first launch, use **Open Accessibility Settings**, enable Gamepad Keymapper, then **Check Again**.
 
-The project is set to build without a development team (`CODE_SIGNING_ALLOWED` is off) so `xcodebuild` does not need a certificate. The app target compiles the core sources directly, so the app does not import a separate module.
+The project signs locally with an ad-hoc identity (`CODE_SIGN_IDENTITY` is `-`) so Xcode can run it without a development team. The app target compiles the core sources directly, so the app does not import a separate module.
 
 ```bash
-xcodebuild -project GamepadKeymapper.xcodeproj -scheme GamepadKeymapper -destination 'platform=macOS' build
+xcodebuild -project GamepadKeymapper.xcodeproj -scheme GamepadKeymapper -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO build
 ```
 
-That command needs macOS and Xcode. It cannot be run in a Linux environment.
-
-If Xcode asks you to sign the app, choose **Sign to Run Locally**. Accessibility permission is tied to the signed binary. Changing the signature means granting it again.
+That command needs macOS and Xcode. It cannot be run in a Linux environment. `CODE_SIGNING_ALLOWED=NO` is the CI override. A local Run from Xcode uses the ad-hoc signature. Accessibility permission is tied to that signature. Changing it means granting Accessibility again.
 
 Logic tests do not need a Mac:
 
@@ -59,7 +57,7 @@ macOS requires Accessibility before a process can create keyboard and mouse even
 
 Shortcuts and app launch work without Accessibility. Keyboard, mouse, scroll, text, and media keys do not.
 
-The menu-bar app also sets `GCSupportsControllerUserInteraction` so GameController keeps delivering input while another app is frontmost.
+The menu-bar app sets `GCController.shouldMonitorBackgroundEvents` so GameController keeps delivering input while another app is frontmost.
 
 Profiles stay on this Mac, in:
 

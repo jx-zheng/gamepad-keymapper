@@ -117,11 +117,6 @@ struct ActionEditor: View {
                             Text(entry.display).tag(entry.keyCode)
                         }
                     }
-                    Button("Listen") {
-                        // The capture field below takes the click.
-                    }
-                    .hidden()
-                    .frame(width: 0)
                 }
                 KeyCaptureField { code, modifiers in
                     var copy = command
@@ -311,9 +306,11 @@ final class KeyCaptureNSView: NSView {
 
     private static func ignoresFunctionFlag(_ keyCode: UInt16) -> Bool {
         switch keyCode {
-        case 96, 97, 98, 99, 100, 101, 103, 109, 111, 118, 120, 122:
+        case 96, 97, 98, 99, 100, 101, 103, 105, 106, 107, 109, 111, 113, 118, 120, 122:
             return true
-        case 115, 116, 117, 119, 121, 123, 124, 125, 126:
+        case 64, 79, 80:
+            return true
+        case 114, 115, 116, 117, 119, 121, 123, 124, 125, 126:
             return true
         default:
             return false
