@@ -294,8 +294,19 @@ final class InputSynthesizer {
     }
 
     private func type(_ text: String) {
-        guard !text.isEmpty else { return }
-        let units = Array(text.utf16)
+        // Save and import already replace line breaks. The live editor can test a
+        // snippet before that write, so do the same replacement here.
+        var flattened = ""
+        flattened.unicodeScalars.reserveCapacity(text.unicodeScalars.count)
+        for scalar in text.unicodeScalars {
+            if scalar.value == 10 || scalar.value == 13 {
+                flattened.unicodeScalars.append(Unicode.Scalar(32))
+            } else {
+                flattened.unicodeScalars.append(scalar)
+            }
+        }
+        guard !flattened.isEmpty else { return }
+        let units = Array(flattened.utf16)
         var start = 0
         while start < units.count {
             var end = min(start + 20, units.count)

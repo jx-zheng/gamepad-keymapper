@@ -325,7 +325,7 @@ private final class ControllerSession {
             }
             if enabled {
                 motion.valueChangedHandler = { [weak self] motion in
-                    guard let self, motion.hasAttitude, motion.hasRotationRate else { return }
+                    guard let self, motion.hasRotationRate else { return }
                     let rate = motion.rotationRate
                     self.owner?.enqueueMotion(InputBatch.Motion(
                         sessionID: self.sessionID,
@@ -357,13 +357,13 @@ private final class ControllerSession {
                 }
                 motion.valueChangedHandler = nil
             }
-        }
-        for button in buttons {
-            button.pressedChangedHandler = nil
-            button.valueChangedHandler = nil
-        }
-        for dpad in dpads {
-            dpad.valueChangedHandler = nil
+            for button in buttons {
+                button.pressedChangedHandler = nil
+                button.valueChangedHandler = nil
+            }
+            for dpad in dpads {
+                dpad.valueChangedHandler = nil
+            }
         }
     }
 
@@ -424,7 +424,7 @@ private final class ControllerSession {
             guard let self else { return }
             let battery = Self.batteryText(controller.battery)
             let motion = controller.motion
-            let hasMotion = motion?.hasAttitude == true && motion?.hasRotationRate == true
+            let hasMotion = motion?.hasRotationRate == true
             self.lock.lock()
             self.cachedBattery = battery
             self.cachedHasMotion = hasMotion

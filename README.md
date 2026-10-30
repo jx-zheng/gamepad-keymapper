@@ -40,7 +40,7 @@ The project signs locally with an ad-hoc identity (`CODE_SIGN_IDENTITY` is `-`) 
 xcodebuild -project GamepadKeymapper.xcodeproj -scheme GamepadKeymapper -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO build
 ```
 
-That command needs macOS and Xcode. It cannot be run in a Linux environment. `CODE_SIGNING_ALLOWED=NO` is the CI override. A local Run from Xcode uses the ad-hoc signature. Accessibility permission is tied to that signature. Changing it means granting Accessibility again.
+That command needs macOS and Xcode. It cannot be run in a Linux environment. `CODE_SIGNING_ALLOWED=NO` is the CI override. A local Run from Xcode uses the ad-hoc signature. Accessibility permission is tied to that signature. An ad-hoc rebuild can change it, so macOS may ask you to grant Accessibility again.
 
 Logic tests do not need a Mac:
 
@@ -114,6 +114,7 @@ Two controllers are different sessions even when they are the same model. A bind
 - No `URLSession` and no network entitlement.
 - Profile files are capped at 1 MB, 40 profiles, 12 layers, 96 bindings, and 8 radial items.
 - Unknown action types are rejected. Extra JSON keys are ignored and are not executed.
+- Imported profiles are sanitized, then they can run Shortcuts, launch apps, and type text. Import does not ask for a second confirmation. Line breaks in typed text are replaced with spaces.
 - Shortcut names are a single `shortcuts` argument. Names with control characters or a leading `-` are cleared and will not run.
 - App paths must be absolute, must not contain `..`, and must be an `.app` bundle. Bundle ids must look like bundle ids.
 - The only `Process` is `/usr/bin/shortcuts`. Output goes to `/dev/null`. At most four Shortcuts run at once, and each is terminated after 30 seconds.
