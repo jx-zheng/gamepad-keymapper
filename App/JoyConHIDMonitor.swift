@@ -12,7 +12,7 @@ final class JoyConHIDMonitor {
     private let log = Logger(subsystem: "app.gamepadkeymapper", category: "hid")
     private let onChange: (JoyConOrientation, ControllerButton, Bool) -> Void
     private var manager: IOHIDManager?
-    private var pads: [ObjectIdentifier: HIDPad] = []
+    private var pads: [ObjectIdentifier: HIDPad] = [:]
     private var started = false
 
     init(onChange: @escaping (JoyConOrientation, ControllerButton, Bool) -> Void) {
@@ -194,7 +194,7 @@ private final class HIDPad {
     }
 
     private static let report: IOHIDReportCallback = { context, _, _, _, reportID, report, length in
-        guard let context, let report, length > 0 else { return }
+        guard let context, length > 0 else { return }
         let pad = Unmanaged<HIDPad>.fromOpaque(context).takeUnretainedValue()
         pad.owner?.handle(pad, reportID: reportID, report: report, length: length)
     }
