@@ -32,7 +32,7 @@ struct EditorView: View {
             Image(systemName: "exclamationmark.circle.fill")
                 .foregroundStyle(.yellow)
             VStack(alignment: .leading, spacing: 4) {
-                Text("Accessibility is off. Gamepad Keymapper can see the controller, but macOS will not send keystrokes or mouse actions until you allow it in Privacy & Security → Accessibility. The radial menu can still open.")
+                Text("Accessibility is off, so keys and clicks are not sent. Turn on Gamepad Keymapper in Privacy & Security → Accessibility, then quit and reopen the app. The radial menu can still open.")
                     .font(.callout)
                     .fixedSize(horizontal: false, vertical: true)
                 if let last = model.lastInputName {
@@ -43,6 +43,7 @@ struct EditorView: View {
             }
             Spacer(minLength: 8)
             Button("Open System Settings") { model.openAccessibilitySettings() }
+                .help("After you turn it on, quit and reopen Gamepad Keymapper.")
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
@@ -1193,10 +1194,11 @@ private struct PermissionsView: View {
                     model.accessibilityTrusted ? "Accessibility is on" : "Accessibility is off",
                     systemImage: model.accessibilityTrusted ? "checkmark.circle.fill" : "exclamationmark.circle"
                 )
-                Text("macOS requires Accessibility before an app can create keyboard and mouse events. Gamepad Keymapper uses it only for the actions you bind. Shortcuts and app launch work without it.")
+                Text("macOS requires Accessibility before this app can type or move the pointer. After you allow it, quit and reopen Gamepad Keymapper. Shortcuts and app launch work without it.")
                     .foregroundStyle(.secondary)
                 HStack {
                     Button("Open Accessibility Settings") { model.openAccessibilitySettings() }
+                        .help("After you turn it on, quit and reopen Gamepad Keymapper.")
                     Button("Check Again") { model.refreshAccessibility(prompt: false) }
                     if !model.settings.didFinishOnboarding {
                         Button("Start Mapping") { model.finishOnboarding() }

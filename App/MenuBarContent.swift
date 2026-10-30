@@ -28,6 +28,7 @@ struct MenuBarContent: View {
             if let last = model.lastInputName {
                 Text("Last press: \(last)")
             }
+            Text("After you allow it, quit and reopen the app.")
             Button("Open Accessibility Settings") {
                 model.openAccessibilitySettings()
                 model.showEditor()
