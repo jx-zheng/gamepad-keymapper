@@ -16,6 +16,7 @@
 		C463D273E1CB1D035B51923D /* ControllerButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControllerButton.swift; sourceTree = "<group>"; };
 		DE94DBDD4B9CC3DA75742216 /* GyroPointer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GyroPointer.swift; sourceTree = "<group>"; };
 		B0C0DE0000000000000000C1 /* JoyConOrientation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JoyConOrientation.swift; sourceTree = "<group>"; };
+		C0HID0000000000000000A1 /* JoyConHIDReport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JoyConHIDReport.swift; sourceTree = "<group>"; };
 		B767BB61AC34AA075A58C325 /* KeyCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyCatalog.swift; sourceTree = "<group>"; };
 		5CDB0A155D555F363F0353BA /* MapperAction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapperAction.swift; sourceTree = "<group>"; };
 		A6EA8F0FB59929484AEF5C8C /* MappingInterpreter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MappingInterpreter.swift; sourceTree = "<group>"; };
@@ -30,6 +31,7 @@
 		AE3337ABF309F2F80B31B237 /* ActionEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionEditor.swift; sourceTree = "<group>"; };
 		54628DF94BA9B9CD246EDB2A /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		E665FA2E22B110AA6A0F683F /* ControllerMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControllerMonitor.swift; sourceTree = "<group>"; };
+		C0HID0000000000000000B1 /* JoyConHIDMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JoyConHIDMonitor.swift; sourceTree = "<group>"; };
 		21A9DF5692AD08E355284431 /* EditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorView.swift; sourceTree = "<group>"; };
 		C0C0DE0000000000000000A1 /* ControlGlyph.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlGlyph.swift; sourceTree = "<group>"; };
 		064B99491DED757747164F8A /* GamepadKeymapperApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GamepadKeymapperApp.swift; sourceTree = "<group>"; };
@@ -43,6 +45,8 @@
 		E70A9D1C6D5D198A2AB02349 /* ControllerButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = C463D273E1CB1D035B51923D /* ControllerButton.swift */; };
 		5EFE6F5DFB70E710169E052E /* GyroPointer.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE94DBDD4B9CC3DA75742216 /* GyroPointer.swift */; };
 		B0C0DE0000000000000000C2 /* JoyConOrientation.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0C0DE0000000000000000C1 /* JoyConOrientation.swift */; };
+		C0HID0000000000000000A2 /* JoyConHIDReport.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0HID0000000000000000A1 /* JoyConHIDReport.swift */; };
+		C0HID0000000000000000B2 /* JoyConHIDMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0HID0000000000000000B1 /* JoyConHIDMonitor.swift */; };
 		6CF0E9B69685678F7B4E05FE /* KeyCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = B767BB61AC34AA075A58C325 /* KeyCatalog.swift */; };
 		A1CA5DE43A8F982DF69D95AA /* MapperAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CDB0A155D555F363F0353BA /* MapperAction.swift */; };
 		BEDB1AF84814D0D8F03B2F9A /* MappingInterpreter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6EA8F0FB59929484AEF5C8C /* MappingInterpreter.swift */; };
@@ -72,6 +76,8 @@
 				E70A9D1C6D5D198A2AB02349 /* ControllerButton.swift in Sources */,
 				5EFE6F5DFB70E710169E052E /* GyroPointer.swift in Sources */,
 				B0C0DE0000000000000000C2 /* JoyConOrientation.swift in Sources */,
+				C0HID0000000000000000A2 /* JoyConHIDReport.swift in Sources */,
+				C0HID0000000000000000B2 /* JoyConHIDMonitor.swift in Sources */,
 				6CF0E9B69685678F7B4E05FE /* KeyCatalog.swift in Sources */,
 				A1CA5DE43A8F982DF69D95AA /* MapperAction.swift in Sources */,
 				BEDB1AF84814D0D8F03B2F9A /* MappingInterpreter.swift in Sources */,
@@ -105,6 +111,7 @@
 				C463D273E1CB1D035B51923D /* ControllerButton.swift */,
 				DE94DBDD4B9CC3DA75742216 /* GyroPointer.swift */,
 				B0C0DE0000000000000000C1 /* JoyConOrientation.swift */,
+				C0HID0000000000000000A1 /* JoyConHIDReport.swift */,
 				B767BB61AC34AA075A58C325 /* KeyCatalog.swift */,
 				5CDB0A155D555F363F0353BA /* MapperAction.swift */,
 				A6EA8F0FB59929484AEF5C8C /* MappingInterpreter.swift */,
@@ -121,6 +128,7 @@
 				AE3337ABF309F2F80B31B237 /* ActionEditor.swift */,
 				54628DF94BA9B9CD246EDB2A /* AppModel.swift */,
 				E665FA2E22B110AA6A0F683F /* ControllerMonitor.swift */,
+				C0HID0000000000000000B1 /* JoyConHIDMonitor.swift */,
 				C0C0DE0000000000000000A1 /* ControlGlyph.swift */,
 				21A9DF5692AD08E355284431 /* EditorView.swift */,
 				064B99491DED757747164F8A /* GamepadKeymapperApp.swift */,

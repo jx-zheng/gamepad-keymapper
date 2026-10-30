@@ -202,6 +202,48 @@ final class ProfileTests: XCTestCase {
         XCTAssertThrowsError(try ProfileSanitizer.sanitize(ProfileDocument(profiles: profiles)))
     }
 
+    func testJoyConSimpleHIDReportSeparatesShoulderFromRail() {
+        let railOnly = JoyConHIDReport.supplementalButtons(packet: [0x3F, 0x30, 0x00], side: .right)
+        XCTAssertEqual(railOnly, [])
+        XCTAssertEqual(
+            JoyConHIDReport.supplementalButtons(packet: [0x3F, 0x00, 0x40], side: .right),
+            [.rightShoulder]
+        )
+        XCTAssertEqual(
+            JoyConHIDReport.supplementalButtons(packet: [0x3F, 0x00, 0x80], side: .right),
+            [.rightTrigger]
+        )
+        XCTAssertEqual(
+            JoyConHIDReport.supplementalButtons(packet: [0x3F, 0x00, 0xC0], side: .right),
+            [.rightShoulder, .rightTrigger]
+        )
+        XCTAssertEqual(
+            JoyConHIDReport.supplementalButtons(packet: [0x3F, 0x00, 0x40], side: .left),
+            [.leftShoulder]
+        )
+        XCTAssertEqual(
+            JoyConHIDReport.supplementalButtons(packet: [0x3F, 0x00, 0x80], side: .left),
+            [.leftTrigger]
+        )
+    }
+
+    func testJoyConFullReportUsesTheSideByte() {
+        var packet = [UInt8](repeating: 0, count: 6)
+        packet[0] = 0x30
+        packet[3] = 0x80
+        packet[5] = 0x40
+        XCTAssertEqual(JoyConHIDReport.supplementalButtons(packet: packet, side: .right), [.rightTrigger])
+        XCTAssertEqual(JoyConHIDReport.supplementalButtons(packet: packet, side: .left), [.leftShoulder])
+        packet[3] = 0x40
+        packet[5] = 0x80
+        XCTAssertEqual(JoyConHIDReport.supplementalButtons(packet: packet, side: .right), [.rightShoulder])
+        XCTAssertEqual(JoyConHIDReport.supplementalButtons(packet: packet, side: .left), [.leftTrigger])
+        XCTAssertNil(JoyConHIDReport.supplementalButtons(packet: [0x3F, 0x00], side: .right))
+        XCTAssertEqual(JoyConHIDReport.side(productID: JoyConHIDReport.rightProductID), .right)
+        XCTAssertEqual(JoyConHIDReport.side(productID: JoyConHIDReport.leftProductID), .left)
+        XCTAssertNil(JoyConHIDReport.side(productID: 0x2009))
+    }
+
     func testJoyConTriggerNamesMapToTriggersNotGenericElements() {
         XCTAssertEqual(ControllerButton.standardShoulderOrTrigger(matching: "ZR"), .rightTrigger)
         XCTAssertEqual(ControllerButton.standardShoulderOrTrigger(matching: "Button ZR"), .rightTrigger)

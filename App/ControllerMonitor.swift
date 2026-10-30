@@ -1,5 +1,6 @@
 import Foundation
 import GameController
+import os
 import QuartzCore
 
 struct ControllerSnapshot: Identifiable, Equatable {
@@ -64,6 +65,7 @@ final class ControllerMonitor: NSObject {
     private var pendingSticks: [String: InputBatch.Stick] = [:]
     private var pendingMotion: [String: InputBatch.Motion] = [:]
     private var drainScheduled = false
+    private var joyConHID: JoyConHIDMonitor?
 
     init(queue: DispatchQueue) {
         self.queue = queue
@@ -78,10 +80,17 @@ final class ControllerMonitor: NSObject {
         for controller in GCController.controllers() {
             attach(controller)
         }
+        let hid = JoyConHIDMonitor { [weak self] side, button, pressed in
+            self?.enqueueJoyConHID(side: side, button: button, pressed: pressed)
+        }
+        joyConHID = hid
+        hid.start()
         onTopology?()
     }
 
     func stop() {
+        joyConHID?.stop()
+        joyConHID = nil
         NotificationCenter.default.removeObserver(self)
         lock.lock()
         let current = Array(sessions.values)
@@ -155,6 +164,20 @@ final class ControllerMonitor: NSObject {
         lock.lock()
         sessions[id] = session
         lock.unlock()
+    }
+
+    private func enqueueJoyConHID(side: JoyConOrientation, button: ControllerButton, pressed: Bool) {
+        lock.lock()
+        let target = sessions.values.compactMap { $0.hidTarget(side: side, button: button) }.first
+        lock.unlock()
+        guard let target else { return }
+        enqueueEdge(InputBatch.Edge(
+            sessionID: target.sessionID,
+            category: target.category,
+            button: button,
+            pressed: pressed,
+            time: CACurrentMediaTime()
+        ))
     }
 
     fileprivate func enqueueEdge(_ edge: InputBatch.Edge) {
@@ -258,6 +281,10 @@ private final class ControllerSession {
     private var dpads: [GCControllerDirectionPad] = []
     private var axes: [GCControllerAxisInput] = []
     private var bound: Set<String> = []
+    /// Buttons GameController did not list, so the HID report may emit them.
+    private var hidButtonIDs: Set<String> = []
+    /// A lone Joy-Con’s GameController shoulders are the rail buttons, not L/R.
+    private var railShouldersAreSL = false
     /// Last edge sent for an analog trigger, so value and pressed callbacks share one press.
     private var triggerLatched: [String: Bool] = [:]
     private var motionInstalled = false
@@ -295,6 +322,13 @@ private final class ControllerSession {
         if orientation != nil {
             micro?.reportsAbsoluteDpadValues = true
         }
+        // Kevin’s dump: lone Joy-Con (R) is micro-only. Shoulders are SL/SR. R and ZR are not in the profile.
+        railShouldersAreSL = orientation != nil && extended == nil
+        if orientation != nil {
+            let buttonKeys = profile.buttons.keys.sorted().joined(separator: ", ")
+            Logger(subsystem: "app.gamepadkeymapper", category: "controller")
+                .info("Joy-Con extended=\(extended != nil, privacy: .public) micro=\(micro != nil, privacy: .public) buttons=\(buttonKeys, privacy: .public)")
+        }
 
         for (name, button) in profile.buttons {
             let names = [name] + Self.elementNames(button)
@@ -331,6 +365,12 @@ private final class ControllerSession {
 
         watchStick(left, side: .left, directsDpad: leftDirectsDpad, orientation: orientation)
         watchStick(right, side: .right, directsDpad: false, orientation: orientation)
+        if railShouldersAreSL, let orientation {
+            let shoulder: ControllerButton = orientation == .left ? .leftShoulder : .rightShoulder
+            let trigger: ControllerButton = orientation == .left ? .leftTrigger : .rightTrigger
+            claimHID(shoulder)
+            claimHID(trigger)
+        }
         elementNames = bound.sorted().map { ControllerButton(id: $0).displayName }
         schedulePropertyRefresh()
     }
@@ -460,7 +500,19 @@ private final class ControllerSession {
         }
     }
 
+    fileprivate func hidTarget(side: JoyConOrientation, button: ControllerButton) -> (sessionID: String, category: String)? {
+        guard JoyConOrientation.matching(category) == side else { return nil }
+        guard hidButtonIDs.contains(button.id) else { return nil }
+        return (sessionID, category)
+    }
+
+    private func claimHID(_ button: ControllerButton) {
+        guard bound.insert(button.id).inserted else { return }
+        hidButtonIDs.insert(button.id)
+    }
+
     private func bind(_ input: GCControllerButtonInput, to button: ControllerButton) {
+        let button = railName(button)
         guard bound.insert(button.id).inserted else { return }
         buttons.append(input)
         if button.id == ControllerButton.home.id || button.id == ControllerButton.options.id {
@@ -542,6 +594,15 @@ private final class ControllerSession {
 
     private func oriented(_ button: ControllerButton, _ orientation: JoyConOrientation?) -> ControllerButton {
         orientation?.remapDpad(button) ?? button
+    }
+
+    private func railName(_ button: ControllerButton) -> ControllerButton {
+        guard railShouldersAreSL else { return button }
+        switch button.id {
+        case ControllerButton.leftShoulder.id: return .sl
+        case ControllerButton.rightShoulder.id: return .sr
+        default: return button
+        }
     }
 
     private var cachedBattery: String?

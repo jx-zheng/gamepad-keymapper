@@ -29,6 +29,9 @@ struct ControllerButton: Hashable, Equatable, Codable {
     static let y = ControllerButton(id: "y")
     static let leftShoulder = ControllerButton(id: "leftShoulder")
     static let rightShoulder = ControllerButton(id: "rightShoulder")
+    /// Rail buttons. On a lone Joy-Con, GameController reports these as the shoulders.
+    static let sl = ControllerButton(id: "sl")
+    static let sr = ControllerButton(id: "sr")
     static let leftTrigger = ControllerButton(id: "leftTrigger")
     static let rightTrigger = ControllerButton(id: "rightTrigger")
     static let leftStickClick = ControllerButton(id: "leftStickClick")
@@ -85,7 +88,7 @@ struct ControllerButton: Hashable, Equatable, Codable {
     /// Buttons offered in the editor, in roughly physical order.
     static let catalog: [ControllerButton] = [
         .a, .b, .x, .y,
-        .leftShoulder, .rightShoulder, .leftTrigger, .rightTrigger,
+        .leftShoulder, .rightShoulder, .sl, .sr, .leftTrigger, .rightTrigger,
         .leftStickClick, .rightStickClick,
         .dpadUp, .dpadDown, .dpadLeft, .dpadRight,
         .leftStickUp, .leftStickDown, .leftStickLeft, .leftStickRight,
@@ -101,6 +104,8 @@ struct ControllerButton: Hashable, Equatable, Codable {
         case "y": return "Y / Triangle"
         case "leftShoulder": return "L / LB"
         case "rightShoulder": return "R / RB"
+        case "sl": return "SL"
+        case "sr": return "SR"
         case "leftTrigger": return "ZL / LT"
         case "rightTrigger": return "ZR / RT"
         case "leftStickClick": return "L3"

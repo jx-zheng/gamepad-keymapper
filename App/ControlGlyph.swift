@@ -35,6 +35,10 @@ struct ControlGlyph: View {
             shoulder("L")
         case "rightShoulder":
             shoulder("R")
+        case "sl":
+            shoulder("SL")
+        case "sr":
+            shoulder("SR")
         case "leftTrigger":
             shoulder("ZL")
         case "rightTrigger":
@@ -129,7 +133,7 @@ struct ControlSection: Identifiable {
 
     static let editor: [ControlSection] = [
         ControlSection(title: "Face", buttons: [.a, .b, .x, .y]),
-        ControlSection(title: "Shoulders", buttons: [.leftShoulder, .rightShoulder]),
+        ControlSection(title: "Shoulders", buttons: [.leftShoulder, .rightShoulder, .sl, .sr]),
         ControlSection(title: "Triggers", buttons: [.leftTrigger, .rightTrigger]),
         ControlSection(title: "D-Pad", buttons: [.dpadUp, .dpadDown, .dpadLeft, .dpadRight]),
         ControlSection(title: "Left Stick", buttons: [.leftStickUp, .leftStickDown, .leftStickLeft, .leftStickRight, .leftStickClick]),
