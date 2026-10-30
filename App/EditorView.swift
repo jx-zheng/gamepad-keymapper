@@ -102,32 +102,30 @@ struct EditorView: View {
             }
             .listStyle(.sidebar)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            Divider()
-            VStack(spacing: 2) {
-                sidebarAnchor(.devices, title: "Devices", systemImage: "gamecontroller")
-                sidebarAnchor(.permissions, title: "Permissions", systemImage: "lock.shield")
-            }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 8)
+            sidebarFooter
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    private func sidebarAnchor(_ item: SidebarItem, title: String, systemImage: String) -> some View {
-        Button {
-            model.sidebar = item
-        } label: {
-            Label(title, systemImage: systemImage)
-                .lineLimit(1)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 6)
-                .background(
-                    model.sidebar == item ? Color.accentColor.opacity(0.28) : Color.clear,
-                    in: RoundedRectangle(cornerRadius: 6)
-                )
+    /// Same sidebar list style as Profiles, anchored to the bottom of the column.
+    private var sidebarFooter: some View {
+        VStack(spacing: 0) {
+            Rectangle()
+                .fill(Color.primary.opacity(0.12))
+                .frame(height: 1)
+                .padding(.horizontal, 10)
+            List(selection: $model.sidebar) {
+                Label("Devices", systemImage: "gamecontroller")
+                    .tag(SidebarItem.devices)
+                Label("Permissions", systemImage: "lock.shield")
+                    .tag(SidebarItem.permissions)
+            }
+            .listStyle(.sidebar)
+            .scrollDisabled(true)
+            .frame(height: 84)
         }
-        .buttonStyle(.plain)
+        .padding(.bottom, 8)
+        .background(.bar)
     }
 
     @ViewBuilder
@@ -803,6 +801,7 @@ private struct RadialTab: View {
     @EnvironmentObject private var model: AppModel
     let profile: Profile
     @State private var selectedMenu: UUID?
+    @State private var expandedSlice: UUID?
 
     private var menu: RadialMenu? {
         if let selectedMenu, let match = profile.radialMenus.first(where: { $0.id == selectedMenu }) {
@@ -834,22 +833,29 @@ private struct RadialTab: View {
     private var radialEditor: some View {
         HStack(spacing: 0) {
             VStack(spacing: 0) {
-                HStack {
-                    Button("Add Menu") { addMenu() }
-                        .disabled(profile.radialMenus.count >= ProfileSanitizer.maxRadialMenus)
-                    Spacer(minLength: 8)
-                    Button("Delete Menu") { deleteSelectedMenu() }
-                        .disabled(menu == nil)
-                }
-                .padding(12)
                 List(selection: $selectedMenu) {
                     ForEach(profile.radialMenus) { item in
                         Text(item.name)
                             .lineLimit(1)
                             .tag(Optional(item.id))
+                            .contextMenu {
+                                Button("Delete", role: .destructive) {
+                                    deleteMenu(item.id)
+                                }
+                            }
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                HStack {
+                    Button {
+                        addMenu()
+                    } label: {
+                        Label("Add Menu", systemImage: "plus")
+                    }
+                    .disabled(profile.radialMenus.count >= ProfileSanitizer.maxRadialMenus)
+                    Spacer()
+                }
+                .padding(10)
             }
             .frame(width: 220)
             .frame(maxHeight: .infinity)
@@ -857,7 +863,8 @@ private struct RadialTab: View {
             ScrollView {
                 if let menu {
                     radialForm(menu)
-                        .padding(16)
+                        .padding(20)
+                        .frame(maxWidth: 560, alignment: .leading)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
@@ -874,83 +881,117 @@ private struct RadialTab: View {
         }
     }
 
-    private func deleteSelectedMenu() {
-        guard let id = menu?.id else { return }
+    private func deleteMenu(_ id: UUID) {
+        if selectedMenu == id {
+            expandedSlice = nil
+        }
         model.update(profile.id) { profile in
             profile.radialMenus.removeAll { $0.id == id }
         }
-        selectedMenu = profile.radialMenus.first { $0.id != id }?.id
+        if selectedMenu == id {
+            selectedMenu = profile.radialMenus.first { $0.id != id }?.id
+        }
     }
 
     private func radialForm(_ menu: RadialMenu) -> some View {
         Form {
-                    TextField("Name", text: Binding(
-                        get: { menu.name },
-                        set: { name in updateMenu(menu.id) { $0.name = name } }
-                    ))
-                    Picker("Hold to open", selection: Binding(
-                        get: { menu.trigger.id },
-                        set: { id in updateMenu(menu.id) { $0.trigger = ControllerButton(id: id) } }
-                    )) {
-                        ForEach(ControllerButton.catalog, id: \.id) { button in
-                            Text(button.displayName).tag(button.id)
-                        }
+            Section("Menu") {
+                TextField("Name", text: Binding(
+                    get: { menu.name },
+                    set: { name in updateMenu(menu.id) { $0.name = name } }
+                ))
+                Picker("Hold to open", selection: Binding(
+                    get: { menu.trigger.id },
+                    set: { id in updateMenu(menu.id) { $0.trigger = ControllerButton(id: id) } }
+                )) {
+                    ForEach(ControllerButton.catalog, id: \.id) { button in
+                        Text(button.displayName).tag(button.id)
                     }
-                    Picker("Aim with", selection: Binding(
-                        get: { menu.selection },
-                        set: { source in updateMenu(menu.id) { $0.selection = source } }
-                    )) {
-                        ForEach(RadialSelectionSource.allCases, id: \.self) { source in
-                            Text(source.displayName).tag(source)
-                        }
+                }
+                Picker("Aim with", selection: Binding(
+                    get: { menu.selection },
+                    set: { source in updateMenu(menu.id) { $0.selection = source } }
+                )) {
+                    ForEach(RadialSelectionSource.allCases, id: \.self) { source in
+                        Text(source.displayName).tag(source)
                     }
-                    Text("Hold the trigger, aim, then release to run the highlighted item. Press B to cancel. Release with nothing highlighted to cancel.")
-                        .font(.caption)
+                }
+                Text("Hold the trigger, aim, then release. Press B to cancel.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Section("Slices") {
+                if menu.items.isEmpty {
+                    Text("No slices yet.")
                         .foregroundStyle(.secondary)
-                    ForEach(menu.items) { item in
-                        VStack(alignment: .leading, spacing: 6) {
-                            TextField("Label", text: Binding(
-                                get: { item.label },
-                                set: { label in
-                                    updateMenu(menu.id) { menu in
-                                        guard let index = menu.items.firstIndex(where: { $0.id == item.id }) else { return }
-                                        menu.items[index].label = label
-                                    }
+                }
+                ForEach(menu.items) { item in
+                    DisclosureGroup(isExpanded: sliceExpanded(item.id)) {
+                        TextField("Label", text: Binding(
+                            get: { item.label },
+                            set: { label in
+                                updateMenu(menu.id) { menu in
+                                    guard let index = menu.items.firstIndex(where: { $0.id == item.id }) else { return }
+                                    menu.items[index].label = label
                                 }
-                            ))
+                            }
+                        ))
+                        ActionEditor(
+                            action: item.action,
+                            shortcutNames: model.shortcutNames,
+                            onChange: { action in
+                                updateMenu(menu.id) { menu in
+                                    guard let index = menu.items.firstIndex(where: { $0.id == item.id }) else { return }
+                                    menu.items[index].action = action
+                                }
+                            },
+                            onTest: { model.test(action: item.action) },
+                            onRefreshShortcuts: { model.refreshShortcuts() }
+                        )
+                        .padding(.top, 4)
+                        Button("Remove Slice", role: .destructive) {
+                            updateMenu(menu.id) { menu in
+                                menu.items.removeAll { $0.id == item.id }
+                            }
+                            if expandedSlice == item.id {
+                                expandedSlice = nil
+                            }
+                        }
+                    } label: {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(item.label.isEmpty ? "Untitled" : item.label)
                             Text(item.action.summary)
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
-                            ActionEditor(
-                                action: item.action,
-                                shortcutNames: model.shortcutNames,
-                                onChange: { action in
-                                    updateMenu(menu.id) { menu in
-                                        guard let index = menu.items.firstIndex(where: { $0.id == item.id }) else { return }
-                                        menu.items[index].action = action
-                                    }
-                                },
-                                onTest: { model.test(action: item.action) },
-                                onRefreshShortcuts: { model.refreshShortcuts() }
-                            )
-                            Button("Remove Item") {
-                                updateMenu(menu.id) { menu in
-                                    menu.items.removeAll { $0.id == item.id }
-                                }
-                            }
+                                .lineLimit(1)
                         }
-                        .padding(.vertical, 4)
+                        .padding(.vertical, 2)
                     }
-                    Button("Add Item") {
-                        updateMenu(menu.id) { menu in
-                            guard menu.items.count < ProfileSanitizer.maxRadialItems else { return }
-                            menu.items.append(RadialItem(label: "Item", action: .media(.playPause)))
-                        }
+                }
+                Button("Add Slice") {
+                    var newID: UUID?
+                    updateMenu(menu.id) { menu in
+                        guard menu.items.count < ProfileSanitizer.maxRadialItems else { return }
+                        let item = RadialItem(label: "Item", action: .media(.playPause))
+                        menu.items.append(item)
+                        newID = item.id
                     }
-                    .disabled(menu.items.count >= ProfileSanitizer.maxRadialItems)
+                    if let newID {
+                        expandedSlice = newID
+                    }
+                }
+                .disabled(menu.items.count >= ProfileSanitizer.maxRadialItems)
+            }
         }
         .formStyle(.grouped)
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func sliceExpanded(_ id: UUID) -> Binding<Bool> {
+        Binding(
+            get: { expandedSlice == id },
+            set: { expandedSlice = $0 ? id : nil }
+        )
     }
 
     private func updateMenu(_ id: UUID, _ body: (inout RadialMenu) -> Void) {
@@ -1101,10 +1142,22 @@ private struct PermissionsView: View {
                         }
                     ), in: 0.05...0.8)
                 }
+            }
+            Section("Login") {
                 Toggle("Open at login", isOn: Binding(
                     get: { model.settings.launchAtLogin },
                     set: { model.setLaunchAtLogin($0) }
                 ))
+                Text("Starts in the menu bar only. The editor stays closed.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                if model.loginItemNeedsApproval {
+                    Text("macOS is waiting for approval. Allow Gamepad Keymapper in System Settings → General → Login Items.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Button("Open Login Items Settings") { model.openLoginItemsSettings() }
+                }
             }
             Section("Profiles on disk") {
                 Text("Profiles are stored as JSON in Application Support. Import and export are in the toolbar. Files are checked for size, counts, and safe Shortcut names and app paths.")
@@ -1118,5 +1171,6 @@ private struct PermissionsView: View {
             }
         }
         .formStyle(.grouped)
+        .onAppear { model.syncLaunchAtLogin() }
     }
 }

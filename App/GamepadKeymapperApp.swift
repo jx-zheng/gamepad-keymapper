@@ -75,6 +75,9 @@ enum EditorWindow {
         // window, not minimizing it, returns to a menu-bar-only agent.
         NSApp.setActivationPolicy(.regular)
         if let controller {
+            if controller.contentViewController == nil {
+                controller.contentViewController = makeHost(model)
+            }
             if let window = controller.window {
                 applyUsableFrame(window, resetIfCramped: true)
             }
@@ -83,9 +86,7 @@ enum EditorWindow {
             model.engine.setDevicesVisible(model.sidebar == .devices)
             return
         }
-        let host = NSHostingController(rootView: EditorView().environmentObject(model))
-        host.sizingOptions = []
-        let window = NSWindow(contentViewController: host)
+        let window = NSWindow(contentViewController: makeHost(model))
         window.title = "Gamepad Keymapper"
         window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
         window.titlebarAppearsTransparent = false
@@ -98,6 +99,17 @@ enum EditorWindow {
         controller.showWindow(nil)
         NSApp.activate(ignoringOtherApps: true)
         model.engine.setDevicesVisible(model.sidebar == .devices)
+    }
+
+    /// Releases the editor view after the window closes. The window controller stays so the frame can be reused.
+    static func releaseContent() {
+        controller?.contentViewController = nil
+    }
+
+    private static func makeHost(_ model: AppModel) -> NSViewController {
+        let host = NSHostingController(rootView: EditorView().environmentObject(model))
+        host.sizingOptions = []
+        return host
     }
 
     /// Keeps a restored or previously resized window from opening smaller than the layout can show.
@@ -119,6 +131,8 @@ private final class EditorWindowDelegate: NSObject, NSWindowDelegate {
         // Close hides the editor and drops the Dock icon. Miniaturize does not
         // send this, so the yellow button leaves a Dock tile that restores the window.
         NSApp.setActivationPolicy(.accessory)
+        // Drop the SwiftUI tree. A closed editor should not keep form state or the Devices timer alive.
+        EditorWindow.releaseContent()
         Task { @MainActor in
             model?.engine.setDevicesVisible(false)
             model?.disarmCapture()

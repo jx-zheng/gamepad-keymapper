@@ -103,7 +103,7 @@ The sample ships Desktop only. Add apps on the Apps tab if you want a profile to
 
 Controller callbacks are coalesced onto one queue. Stick and motion samples keep only the latest value, so a noisy gyro cannot grow a backlog. Button edges are capped. There is no timer while the app is idle.
 
-A press commits immediately. Chatter inside the debounce window (15 ms by default) is ignored, and a timer runs only when a change arrived during that window and still needs to commit. A pointer timer runs only while a button is holding a mouse-move action. Gyro callbacks are installed only while gyro is enabled and its activation button matches, and only again when the held buttons, profile, or enabled state change.
+A press commits immediately. Chatter inside the debounce window (15 ms by default) is ignored, and a timer runs only when a change arrived during that window and still needs to commit. A pointer timer runs only while a button is holding a mouse-move action. Gyro callbacks are installed only while gyro is enabled and its activation button matches, and only again when the held buttons, profile, or enabled state change. With the editor closed and nothing held, the menu-bar app does not run a repeating timer; closing the editor releases its view. A debug build with the editor open and idle stays near 70 MB and 0% CPU.
 
 Switching profiles releases keys and mouse buttons that are still down. A button that is still physically held does not fire the new profile until you release it and press it again. Disconnecting a controller releases only that controller’s holds.
 

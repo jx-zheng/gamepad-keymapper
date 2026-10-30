@@ -101,6 +101,7 @@ final class AppModel: ObservableObject {
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
             self.startLifetimeObservers()
+            self.syncLaunchAtLogin()
             if !self.settings.didFinishOnboarding || !self.accessibilityTrusted {
                 self.showEditor()
             }
@@ -189,21 +190,40 @@ final class AppModel: ObservableObject {
         }
     }
 
-    func setLaunchAtLogin(_ enabled: Bool) {
+    /// True when macOS has the login item registered but the user still has to allow it.
+    @Published private(set) var loginItemNeedsApproval = false
+
+    /// Matches the toggle to `SMAppService` without opening the editor.
+    func syncLaunchAtLogin() {
+        let status = SMAppService.mainApp.status
+        loginItemNeedsApproval = status == .requiresApproval
+        let enabled = status == .enabled || status == .requiresApproval
+        guard settings.launchAtLogin != enabled else { return }
         settings.launchAtLogin = enabled
+        schedulePersist()
+    }
+
+    func setLaunchAtLogin(_ enabled: Bool) {
         do {
+            let status = SMAppService.mainApp.status
             if enabled {
-                if SMAppService.mainApp.status != .enabled {
+                if status != .enabled && status != .requiresApproval {
                     try SMAppService.mainApp.register()
                 }
-            } else if SMAppService.mainApp.status == .enabled {
+            } else if status == .enabled || status == .requiresApproval {
                 try SMAppService.mainApp.unregister()
             }
         } catch {
-            settings.launchAtLogin = SMAppService.mainApp.status == .enabled
             alertMessage = "Couldn’t update the login item. \(error.localizedDescription)"
         }
+        let status = SMAppService.mainApp.status
+        loginItemNeedsApproval = status == .requiresApproval
+        settings.launchAtLogin = status == .enabled || status == .requiresApproval
         schedulePersist()
+    }
+
+    func openLoginItemsSettings() {
+        SMAppService.openSystemSettingsLoginItems()
     }
 
     func update(_ id: UUID, _ body: (inout Profile) -> Void) {
