@@ -1,0 +1,276 @@
+{
+  "format" : "gamepad-keymapper.profiles",
+  "profiles" : [
+    {
+      "bundleIdentifiers" : [
+
+      ],
+      "enabled" : true,
+      "gyro" : {
+        "activation" : {
+          "button" : "leftTrigger",
+          "type" : "whileHeld"
+        },
+        "deadzone" : 0.12,
+        "enabled" : false,
+        "invertX" : false,
+        "invertY" : false,
+        "sensitivity" : 800
+      },
+      "id" : "E4A1C0DE-0001-4000-8000-000000000001",
+      "isDefault" : true,
+      "layers" : [
+        {
+          "activation" : {
+            "type" : "base"
+          },
+          "allowsFallthrough" : true,
+          "bindings" : [
+            {
+              "action" : {
+                "button" : "left",
+                "clicks" : 1,
+                "type" : "mouseClick"
+              },
+              "button" : "a",
+              "id" : "E4A1C0DE-0001-4000-8000-000000000011"
+            },
+            {
+              "action" : {
+                "button" : "right",
+                "clicks" : 1,
+                "type" : "mouseClick"
+              },
+              "button" : "b",
+              "id" : "E4A1C0DE-0001-4000-8000-000000000012"
+            },
+            {
+              "action" : {
+                "holdLast" : false,
+                "steps" : [
+                  {
+                    "delayMilliseconds" : 0,
+                    "key" : "space",
+                    "modifiers" : [
+                      "command"
+                    ]
+                  }
+                ],
+                "type" : "keyboard"
+              },
+              "button" : "x",
+              "id" : "E4A1C0DE-0001-4000-8000-000000000013"
+            },
+            {
+              "action" : {
+                "holdLast" : false,
+                "steps" : [
+                  {
+                    "delayMilliseconds" : 0,
+                    "key" : "return",
+                    "modifiers" : [
+
+                    ]
+                  }
+                ],
+                "type" : "keyboard"
+              },
+              "button" : "y",
+              "id" : "E4A1C0DE-0001-4000-8000-000000000014"
+            },
+            {
+              "action" : {
+                "holdLast" : true,
+                "steps" : [
+                  {
+                    "delayMilliseconds" : 0,
+                    "key" : "upArrow",
+                    "modifiers" : [
+
+                    ]
+                  }
+                ],
+                "type" : "keyboard"
+              },
+              "button" : "dpadUp",
+              "id" : "E4A1C0DE-0001-4000-8000-000000000015"
+            },
+            {
+              "action" : {
+                "holdLast" : true,
+                "steps" : [
+                  {
+                    "delayMilliseconds" : 0,
+                    "key" : "downArrow",
+                    "modifiers" : [
+
+                    ]
+                  }
+                ],
+                "type" : "keyboard"
+              },
+              "button" : "dpadDown",
+              "id" : "E4A1C0DE-0001-4000-8000-000000000016"
+            },
+            {
+              "action" : {
+                "holdLast" : true,
+                "steps" : [
+                  {
+                    "delayMilliseconds" : 0,
+                    "key" : "leftArrow",
+                    "modifiers" : [
+
+                    ]
+                  }
+                ],
+                "type" : "keyboard"
+              },
+              "button" : "dpadLeft",
+              "id" : "E4A1C0DE-0001-4000-8000-000000000017"
+            },
+            {
+              "action" : {
+                "holdLast" : true,
+                "steps" : [
+                  {
+                    "delayMilliseconds" : 0,
+                    "key" : "rightArrow",
+                    "modifiers" : [
+
+                    ]
+                  }
+                ],
+                "type" : "keyboard"
+              },
+              "button" : "dpadRight",
+              "id" : "E4A1C0DE-0001-4000-8000-000000000018"
+            },
+            {
+              "action" : {
+                "key" : "playPause",
+                "type" : "media"
+              },
+              "button" : "rightShoulder",
+              "id" : "E4A1C0DE-0001-4000-8000-000000000019"
+            },
+            {
+              "action" : {
+                "key" : "mute",
+                "type" : "media"
+              },
+              "button" : "leftStickClick",
+              "id" : "E4A1C0DE-0001-4000-8000-00000000001A"
+            },
+            {
+              "action" : {
+                "holdLast" : false,
+                "steps" : [
+                  {
+                    "delayMilliseconds" : 0,
+                    "key" : "upArrow",
+                    "modifiers" : [
+                      "control"
+                    ]
+                  }
+                ],
+                "type" : "keyboard"
+              },
+              "button" : "rightStickClick",
+              "id" : "E4A1C0DE-0001-4000-8000-00000000001B"
+            },
+            {
+              "action" : {
+                "text" : "Hello from Gamepad Keymapper",
+                "type" : "typeText"
+              },
+              "button" : "options",
+              "id" : "E4A1C0DE-0001-4000-8000-00000000001C"
+            }
+          ],
+          "id" : "E4A1C0DE-0001-4000-8000-000000000002",
+          "name" : "Base"
+        }
+      ],
+      "name" : "Desktop",
+      "radialMenus" : [
+        {
+          "id" : "E4A1C0DE-0001-4000-8000-000000000004",
+          "items" : [
+            {
+              "action" : {
+                "bundleIdentifier" : "com.apple.TextEdit",
+                "type" : "launchApp"
+              },
+              "id" : "E4A1C0DE-0001-4000-8000-000000000031",
+              "label" : "TextEdit"
+            },
+            {
+              "action" : {
+                "bundleIdentifier" : "com.apple.Safari",
+                "type" : "launchApp"
+              },
+              "id" : "E4A1C0DE-0001-4000-8000-000000000032",
+              "label" : "Safari"
+            },
+            {
+              "action" : {
+                "bundleIdentifier" : "com.apple.systempreferences",
+                "type" : "launchApp"
+              },
+              "id" : "E4A1C0DE-0001-4000-8000-000000000033",
+              "label" : "Settings"
+            },
+            {
+              "action" : {
+                "key" : "playPause",
+                "type" : "media"
+              },
+              "id" : "E4A1C0DE-0001-4000-8000-000000000034",
+              "label" : "Play/Pause"
+            },
+            {
+              "action" : {
+                "holdLast" : false,
+                "steps" : [
+                  {
+                    "delayMilliseconds" : 0,
+                    "key" : "space",
+                    "modifiers" : [
+                      "command"
+                    ]
+                  }
+                ],
+                "type" : "keyboard"
+              },
+              "id" : "E4A1C0DE-0001-4000-8000-000000000035",
+              "label" : "Spotlight"
+            },
+            {
+              "action" : {
+                "text" : "— ",
+                "type" : "typeText"
+              },
+              "id" : "E4A1C0DE-0001-4000-8000-000000000036",
+              "label" : "Snippet"
+            }
+          ],
+          "name" : "Quick Actions",
+          "selection" : "dpad",
+          "trigger" : "menu"
+        }
+      ],
+      "sticks" : {
+        "left" : {
+          "sensitivity" : 1080,
+          "type" : "mouse"
+        },
+        "right" : {
+          "sensitivity" : 360,
+          "type" : "scroll"
+        }
+      }
+    }
+  ],
+  "version" : 1
+}

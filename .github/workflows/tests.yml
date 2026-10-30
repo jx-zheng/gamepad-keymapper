@@ -1,0 +1,25 @@
+name: Core tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: "6.0.3"
+      - name: Unit tests
+        run: swift test
+      - name: Security scan
+        run: bash Scripts/security-scan.sh
+
+  macos-build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: xcodebuild -project GamepadKeymapper.xcodeproj -scheme GamepadKeymapper -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO build

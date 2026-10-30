@@ -1,0 +1,320 @@
+import XCTest
+@testable import GamepadKeymapperCore
+
+final class ProfileTests: XCTestCase {
+    func testSampleRoundTripsAndSanitizesCleanly() throws {
+        let original = SampleProfiles.document()
+        let data = try ProfileCodec.encode(original)
+        XCTAssertEqual(try ProfileCodec.decode(data), original)
+        let imported = try ProfileCodec.importDocument(data)
+        XCTAssertEqual(imported.document, original)
+        XCTAssertTrue(imported.warnings.isEmpty)
+    }
+
+    func testReimportingTheSampleDoesNotDuplicateProfiles() throws {
+        let sample = SampleProfiles.document()
+        let merged = sample.merging(sample)
+        XCTAssertEqual(merged, sample)
+        XCTAssertEqual(merged.profiles.map(\.name), ["Desktop"])
+
+        let url = repoRoot().appendingPathComponent("Samples/desktop-navigation.json")
+        let file = try ProfileCodec.decode(Data(contentsOf: url))
+        let fromFile = sample.merging(file)
+        XCTAssertEqual(fromFile.profiles.count, sample.profiles.count)
+        XCTAssertEqual(fromFile.profiles.map(\.id), sample.profiles.map(\.id))
+        XCTAssertEqual(fromFile.profiles.map(\.name), sample.profiles.map(\.name))
+
+        let extra = Profile.starter(name: "Extra", isDefault: false)
+        let withExtra = sample.merging(ProfileDocument(profiles: [extra]))
+        var incoming = ProfileDocument(profiles: [withExtra.profiles[0]])
+        incoming.profiles[0].name = "Desktop from file"
+        let replaced = withExtra.merging(incoming)
+        XCTAssertEqual(replaced.profiles.count, withExtra.profiles.count)
+        XCTAssertEqual(replaced.profiles[0].id, sample.profiles[0].id)
+        XCTAssertEqual(replaced.profiles[0].name, "Desktop from file")
+        XCTAssertEqual(replaced.profiles[1].name, "Extra")
+
+        let kept = Profile.starter(name: "Kept", isDefault: false)
+        let appended = sample.merging(ProfileDocument(profiles: [kept]))
+        XCTAssertEqual(appended.profiles.count, sample.profiles.count + 1)
+        XCTAssertEqual(appended.profiles.last?.id, kept.id)
+    }
+
+    func testCheckedInSampleMatchesFactory() throws {
+        let url = repoRoot().appendingPathComponent("Samples/desktop-navigation.json")
+        if ProcessInfo.processInfo.environment["DUMP_SAMPLE"] == "1" {
+            try FileManager.default.createDirectory(
+                at: url.deletingLastPathComponent(),
+                withIntermediateDirectories: true
+            )
+            try ProfileCodec.encode(SampleProfiles.document()).write(to: url)
+        }
+        let data = try Data(contentsOf: url)
+        let decoded = try ProfileCodec.decode(data)
+        XCTAssertEqual(decoded, SampleProfiles.document())
+    }
+
+    func testProfileSelection() {
+        let desktop = SampleProfiles.desktop()
+        var apps = Profile.starter(name: "Apps", isDefault: false)
+        apps.bundleIdentifiers = ["com.apple.dt.Xcode"]
+        let profiles = [desktop, apps]
+        XCTAssertEqual(
+            ProfileSelector.select(from: profiles, frontmostBundleID: "com.apple.dt.Xcode", overrideID: nil)?.name,
+            "Apps"
+        )
+        XCTAssertEqual(
+            ProfileSelector.select(from: profiles, frontmostBundleID: "COM.APPLE.DT.XCODE", overrideID: nil)?.name,
+            "Apps"
+        )
+        XCTAssertEqual(
+            ProfileSelector.select(from: profiles, frontmostBundleID: "com.apple.Safari", overrideID: nil)?.name,
+            "Desktop"
+        )
+        XCTAssertEqual(
+            ProfileSelector.select(from: profiles, frontmostBundleID: "com.apple.Safari", overrideID: apps.id)?.name,
+            "Apps"
+        )
+        var disabled = profiles
+        disabled[1].enabled = false
+        XCTAssertEqual(
+            ProfileSelector.select(from: disabled, frontmostBundleID: "com.apple.dt.Xcode", overrideID: nil)?.name,
+            "Desktop"
+        )
+        disabled[0].enabled = false
+        XCTAssertNil(ProfileSelector.select(from: disabled, frontmostBundleID: nil, overrideID: apps.id))
+    }
+
+    func testStoreRoundTrip() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let store = ProfileStore(root: root)
+        defer { try? FileManager.default.removeItem(at: root) }
+        XCTAssertEqual(try store.loadDocument(), SampleProfiles.document())
+        try store.saveDocument(SampleProfiles.document())
+        XCTAssertEqual(try store.loadDocument(), SampleProfiles.document())
+        var settings = AppSettings.initial
+        settings.debounceMilliseconds = 400
+        settings.stickReleaseZone = 0.8
+        settings.stickDeadzone = 0.3
+        try store.saveSettings(settings)
+        let loaded = try store.loadSettings()
+        XCTAssertEqual(loaded.debounceMilliseconds, 200)
+        XCTAssertEqual(loaded.stickReleaseZone, 0.3)
+    }
+
+    func testRejectsWrongFormatVersionAndShellAction() throws {
+        XCTAssertThrowsError(try ProfileCodec.decode(Data(#"{"format":"nope","version":1,"profiles":[]}"#.utf8)))
+        XCTAssertThrowsError(try ProfileCodec.decode(Data(#"{"format":"gamepad-keymapper.profiles","version":99,"profiles":[]}"#.utf8)))
+
+        let data = try ProfileCodec.encode(ProfileDocument(profiles: [Profile.starter(name: "S", isDefault: true)]))
+        var root = try JSONSerialization.jsonObject(with: data) as! [String: Any]
+        var profiles = root["profiles"] as! [[String: Any]]
+        var layers = profiles[0]["layers"] as! [[String: Any]]
+        var bindings = layers[0]["bindings"] as! [[String: Any]]
+        var action = bindings[0]["action"] as! [String: Any]
+        action["type"] = "shell"
+        action["command"] = "rm -rf /"
+        bindings[0]["action"] = action
+        layers[0]["bindings"] = bindings
+        profiles[0]["layers"] = layers
+        root["profiles"] = profiles
+        let mutated = try JSONSerialization.data(withJSONObject: root)
+        XCTAssertThrowsError(try ProfileCodec.decode(mutated))
+    }
+
+    func testUnknownKeysAreNotExecuted() throws {
+        let data = try ProfileCodec.encode(ProfileDocument(profiles: [Profile.starter(name: "S", isDefault: true)]))
+        var root = try JSONSerialization.jsonObject(with: data) as! [String: Any]
+        var profiles = root["profiles"] as! [[String: Any]]
+        var layers = profiles[0]["layers"] as! [[String: Any]]
+        var bindings = layers[0]["bindings"] as! [[String: Any]]
+        var action = bindings[0]["action"] as! [String: Any]
+        action["shell"] = "rm -rf /"
+        bindings[0]["action"] = action
+        layers[0]["bindings"] = bindings
+        profiles[0]["layers"] = layers
+        root["profiles"] = profiles
+        let mutated = try JSONSerialization.data(withJSONObject: root)
+        let decoded = try ProfileCodec.decode(mutated)
+        let encoded = try ProfileCodec.encode(decoded)
+        let text = String(decoding: encoded, as: UTF8.self)
+        XCTAssertFalse(text.contains("rm -rf"))
+        XCTAssertFalse(text.contains("shell"))
+    }
+
+    func testUnsafeShortcutAndPathAreCleared() throws {
+        var profile = Profile.starter(name: "Unsafe", isDefault: true)
+        profile.layers[0].bindings[0].action = .shortcut(name: "Hello\nrm -rf /")
+        profile.layers[0].bindings[1].action = .launchApp(AppLaunch(path: "TextEdit.app"))
+        profile.bundleIdentifiers = ["../evil", "com.apple.TextEdit"]
+        let report = try ProfileSanitizer.sanitize(ProfileDocument(profiles: [profile]))
+        let bindings = report.document.profiles[0].layers[0].bindings
+        XCTAssertEqual(bindings[0].action, .shortcut(name: ""))
+        if case .launchApp(let launch) = bindings[1].action {
+            XCTAssertNil(launch.path)
+        } else {
+            XCTFail("Expected a launch action")
+        }
+        XCTAssertEqual(report.document.profiles[0].bundleIdentifiers, ["com.apple.TextEdit"])
+        XCTAssertFalse(report.warnings.isEmpty)
+        XCTAssertNil(CommandSafety.shortcutsArguments(name: "Hello\nrm -rf /"))
+        XCTAssertNil(CommandSafety.shortcutsArguments(name: "-help"))
+        XCTAssertEqual(CommandSafety.shortcutsArguments(name: "New Note"), ["run", "New Note"])
+    }
+
+    func testSafeAbsoluteAppPathIsKept() throws {
+        var profile = Profile.starter(name: "Path", isDefault: true)
+        profile.layers[0].bindings[0].action = .launchApp(AppLaunch(path: "/Applications/TextEdit.app"))
+        let report = try ProfileSanitizer.sanitize(ProfileDocument(profiles: [profile]))
+        if case .launchApp(let launch) = report.document.profiles[0].layers[0].bindings[0].action {
+            XCTAssertEqual(launch.path, "/Applications/TextEdit.app")
+        } else {
+            XCTFail("Expected a launch action")
+        }
+        XCTAssertFalse(ProfileSanitizer.isSafeAppPath("/tmp/../Applications/Foo.app"))
+        XCTAssertFalse(ProfileSanitizer.isBundleIdentifier("not a bundle"))
+    }
+
+    func testSnippetWarningsAndSingleDefault() throws {
+        var profile = Profile.starter(name: "Text", isDefault: true)
+        profile.layers[0].bindings[0].action = .typeText("hello\r\n")
+        profile.layers[0].bindings[1].action = .typeText("echo $(whoami)\nmore")
+        let other = Profile.starter(name: "Also", isDefault: true)
+        let report = try ProfileSanitizer.sanitize(ProfileDocument(profiles: [profile, other]))
+        if case .typeText(let text) = report.document.profiles[0].layers[0].bindings[0].action {
+            XCTAssertEqual(text, "hello  ")
+            XCTAssertFalse(text.contains("\n") || text.contains("\r"))
+        } else {
+            XCTFail("Expected typed text")
+        }
+        if case .typeText(let text) = report.document.profiles[0].layers[0].bindings[1].action {
+            XCTAssertEqual(text, "echo $(whoami) more")
+        } else {
+            XCTFail("Expected the shell-like snippet to stay text")
+        }
+        XCTAssertTrue(report.warnings.contains { $0.contains("shell") })
+        XCTAssertEqual(report.document.profiles.filter(\.isDefault).count, 1)
+    }
+
+    func testHardCaps() throws {
+        XCTAssertThrowsError(try ProfileSanitizer.checkByteCount(ProfileSanitizer.maxBytes + 1))
+        let profiles = (0..<41).map { Profile.starter(name: "P\($0)", isDefault: $0 == 0) }
+        XCTAssertThrowsError(try ProfileSanitizer.sanitize(ProfileDocument(profiles: profiles)))
+    }
+
+    func testJoyConSimpleHIDReportSeparatesShoulderFromRail() {
+        let railOnly = JoyConHIDReport.supplementalButtons(packet: [0x3F, 0x30, 0x00], side: .right)
+        XCTAssertEqual(railOnly, [])
+        XCTAssertEqual(
+            JoyConHIDReport.supplementalButtons(packet: [0x3F, 0x00, 0x40], side: .right),
+            [.rightShoulder]
+        )
+        XCTAssertEqual(
+            JoyConHIDReport.supplementalButtons(packet: [0x3F, 0x00, 0x80], side: .right),
+            [.rightTrigger]
+        )
+        XCTAssertEqual(
+            JoyConHIDReport.supplementalButtons(packet: [0x3F, 0x00, 0xC0], side: .right),
+            [.rightShoulder, .rightTrigger]
+        )
+        XCTAssertEqual(
+            JoyConHIDReport.supplementalButtons(packet: [0x3F, 0x00, 0x40], side: .left),
+            [.leftShoulder]
+        )
+        XCTAssertEqual(
+            JoyConHIDReport.supplementalButtons(packet: [0x3F, 0x00, 0x80], side: .left),
+            [.leftTrigger]
+        )
+    }
+
+    func testJoyConFullReportUsesTheSideByte() {
+        var packet = [UInt8](repeating: 0, count: 6)
+        packet[0] = 0x30
+        packet[3] = 0x80
+        packet[5] = 0x40
+        XCTAssertEqual(JoyConHIDReport.supplementalButtons(packet: packet, side: .right), [.rightTrigger])
+        XCTAssertEqual(JoyConHIDReport.supplementalButtons(packet: packet, side: .left), [.leftShoulder])
+        packet[3] = 0x40
+        packet[5] = 0x80
+        XCTAssertEqual(JoyConHIDReport.supplementalButtons(packet: packet, side: .right), [.rightShoulder])
+        XCTAssertEqual(JoyConHIDReport.supplementalButtons(packet: packet, side: .left), [.leftTrigger])
+        XCTAssertNil(JoyConHIDReport.supplementalButtons(packet: [0x3F, 0x00], side: .right))
+        XCTAssertEqual(JoyConHIDReport.side(productID: JoyConHIDReport.rightProductID), .right)
+        XCTAssertEqual(JoyConHIDReport.side(productID: JoyConHIDReport.leftProductID), .left)
+        XCTAssertNil(JoyConHIDReport.side(productID: 0x2009))
+    }
+
+    func testJoyConTriggerNamesMapToTriggersNotGenericElements() {
+        XCTAssertEqual(ControllerButton.standardShoulderOrTrigger(matching: "ZR"), .rightTrigger)
+        XCTAssertEqual(ControllerButton.standardShoulderOrTrigger(matching: "Button ZR"), .rightTrigger)
+        XCTAssertEqual(ControllerButton.standardShoulderOrTrigger(matching: "Right Trigger"), .rightTrigger)
+        XCTAssertEqual(ControllerButton.standardShoulderOrTrigger(matching: "zr.circle"), .rightTrigger)
+        XCTAssertEqual(ControllerButton.standardShoulderOrTrigger(matching: "R2"), .rightTrigger)
+        XCTAssertEqual(ControllerButton.standardShoulderOrTrigger(matching: "ZL"), .leftTrigger)
+        XCTAssertEqual(ControllerButton.standardShoulderOrTrigger(matching: "Left Trigger"), .leftTrigger)
+        XCTAssertEqual(ControllerButton.standardShoulderOrTrigger(matching: "L2"), .leftTrigger)
+        XCTAssertEqual(ControllerButton.standardShoulderOrTrigger(matching: "Right Shoulder"), .rightShoulder)
+        XCTAssertEqual(ControllerButton.standardShoulderOrTrigger(matching: "Left Shoulder"), .leftShoulder)
+        XCTAssertNil(ControllerButton.standardShoulderOrTrigger(matching: "Button A"))
+        XCTAssertNil(ControllerButton.standardShoulderOrTrigger(matching: "Direction Pad Up"))
+    }
+
+    func testBlankProfileHasNoSampleMappings() {
+        let profile = Profile.blank(name: "Profile 2", isDefault: false)
+        XCTAssertEqual(profile.name, "Profile 2")
+        XCTAssertFalse(profile.isDefault)
+        XCTAssertEqual(profile.layers.map(\.name), ["Base"])
+        XCTAssertEqual(profile.layers.first?.activation, .base)
+        XCTAssertEqual(profile.layers.first?.bindings.count, 0)
+        XCTAssertTrue(profile.radialMenus.isEmpty)
+        XCTAssertEqual(profile.sticks, .digital)
+        XCTAssertFalse(profile.gyro.enabled)
+        XCTAssertNotEqual(profile.id, SampleProfiles.desktop().id)
+        XCTAssertGreaterThan(SampleProfiles.desktop().layers[0].bindings.count, 0)
+    }
+
+    func testAccessibilityTrustDoesNotRequireBothChecks() {
+        let axOnly = AccessibilityTrust(accessibilityGranted: true, canPostEvents: false)
+        XCTAssertTrue(axOnly.allowsInjection)
+        XCTAssertFalse(axOnly.accessibilityIsOff)
+        XCTAssertEqual(axOnly.failure, .posting)
+
+        let postOnly = AccessibilityTrust(accessibilityGranted: false, canPostEvents: true)
+        XCTAssertTrue(postOnly.allowsInjection)
+        XCTAssertTrue(postOnly.accessibilityIsOff)
+        XCTAssertEqual(postOnly.failure, .accessibility)
+
+        let neither = AccessibilityTrust(accessibilityGranted: false, canPostEvents: false)
+        XCTAssertFalse(neither.allowsInjection)
+        XCTAssertEqual(neither.failure, .both)
+
+        let ready = AccessibilityTrust(accessibilityGranted: true, canPostEvents: true)
+        XCTAssertTrue(ready.allowsInjection)
+        XCTAssertNil(ready.failure)
+    }
+
+    func testRadialGeometryCardinals() {
+        XCTAssertEqual(RadialGeometry.sliceIndex(dx: 0, dy: 1, count: 4, deadzone: 0.2), 0)
+        XCTAssertEqual(RadialGeometry.sliceIndex(dx: 1, dy: 0, count: 4, deadzone: 0.2), 1)
+        XCTAssertEqual(RadialGeometry.sliceIndex(dx: 0, dy: -1, count: 4, deadzone: 0.2), 2)
+        XCTAssertEqual(RadialGeometry.sliceIndex(dx: -1, dy: 0, count: 4, deadzone: 0.2), 3)
+        XCTAssertNil(RadialGeometry.sliceIndex(dx: 0.1, dy: 0, count: 4, deadzone: 0.2))
+        XCTAssertEqual(RadialGeometry.index(for: .up, count: 8), 0)
+        XCTAssertEqual(RadialGeometry.index(for: .right, count: 8), 2)
+        let up = RadialGeometry.sliceCenter(index: 0, count: 4)
+        XCTAssertEqual(up.x, 0, accuracy: 0.001)
+        XCTAssertEqual(up.y, 1, accuracy: 0.001)
+        let right = RadialGeometry.sliceCenter(index: 1, count: 4)
+        XCTAssertEqual(right.x, 1, accuracy: 0.001)
+        XCTAssertEqual(right.y, 0, accuracy: 0.001)
+        let down = RadialGeometry.sliceCenter(index: 2, count: 4)
+        XCTAssertEqual(down.y, -1, accuracy: 0.001)
+    }
+
+    private func repoRoot() -> URL {
+        URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+    }
+}
