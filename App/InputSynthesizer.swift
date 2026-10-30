@@ -118,10 +118,11 @@ final class InputSynthesizer {
             run.cancelled = true
         }
         keyboardRuns.removeAll()
-        for code in keyCounts.keys {
+        let codes = Array(keyCounts.keys)
+        for code in codes {
+            keyCounts[code] = nil
             postKey(code, down: false, flags: [])
         }
-        keyCounts.removeAll()
         for button in mouseCounts.keys {
             postMouse(button, down: false, clickState: 1)
         }
@@ -219,11 +220,17 @@ final class InputSynthesizer {
     private func postKey(_ code: CGKeyCode, down: Bool, flags: CGEventFlags) {
         let source = CGEventSource(stateID: .hidSystemState)
         guard let event = CGEvent(keyboardEventSource: source, virtualKey: code, keyDown: down) else { return }
-        var merged = flags.union(heldModifierFlags())
-        if !down, let own = modifierFlag(for: code) {
-            merged.remove(own)
+        if down {
+            event.flags = flags.union(heldModifierFlags())
+        } else {
+            // Key-up uses the counts after this key was removed. Step flags from the
+            // original press are stale and would put Command or Shift back down.
+            var merged = heldModifierFlags()
+            if let own = modifierFlag(for: code) {
+                merged.remove(own)
+            }
+            event.flags = merged
         }
-        event.flags = merged
         event.post(tap: .cghidEventTap)
     }
 
@@ -313,11 +320,12 @@ final class InputSynthesizer {
         let source = CGEventSource(stateID: .hidSystemState)
         guard let down = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: true),
               let up = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: false) else { return }
-        var units = units
         units.withUnsafeBufferPointer { buffer in
             down.keyboardSetUnicodeString(stringLength: buffer.count, unicodeString: buffer.baseAddress)
             up.keyboardSetUnicodeString(stringLength: buffer.count, unicodeString: buffer.baseAddress)
         }
+        down.flags = []
+        up.flags = []
         down.post(tap: .cghidEventTap)
         up.post(tap: .cghidEventTap)
     }
@@ -388,13 +396,7 @@ final class InputSynthesizer {
     }
 
     private func clampToDisplays(_ point: CGPoint) -> CGPoint {
-        var union = CGRect.null
-        for screen in NSScreen.screens {
-            guard let number = screen.deviceDescription[NSDeviceDescriptionKey(rawValue: "NSScreenNumber")] as? NSNumber else {
-                continue
-            }
-            union = union.union(CGDisplayBounds(CGDirectDisplayID(number.uint32Value)))
-        }
+        let union = DisplayBoundsCache.shared.bounds()
         guard !union.isNull, union.width > 2, union.height > 2 else { return point }
         let inset = union.insetBy(dx: 1, dy: 1)
         return CGPoint(
@@ -402,4 +404,60 @@ final class InputSynthesizer {
             y: min(max(point.y, inset.minY), inset.maxY)
         )
     }
+}
+
+/// Display bounds for pointer clamping. Refreshed when displays change, not on each move.
+///
+/// `NSScreen` is main-thread AppKit. The mapper queue calls this, so the cache uses
+/// Core Graphics only.
+private final class DisplayBoundsCache {
+    static let shared = DisplayBoundsCache()
+
+    private let lock = NSLock()
+    private var union = CGRect.null
+    private var ready = false
+
+    func bounds() -> CGRect {
+        lock.lock()
+        if ready {
+            let current = union
+            lock.unlock()
+            return current
+        }
+        ready = true
+        lock.unlock()
+        CGDisplayRegisterReconfigurationCallback(displayBoundsChanged, nil)
+        let initial = Self.activeUnion()
+        store(initial)
+        return initial
+    }
+
+    fileprivate func store(_ rect: CGRect) {
+        lock.lock()
+        union = rect
+        lock.unlock()
+    }
+
+    fileprivate static func activeUnion() -> CGRect {
+        var count: UInt32 = 0
+        guard CGGetActiveDisplayList(0, nil, &count) == .success, count > 0 else { return .null }
+        count = min(count, 32)
+        var ids = [CGDirectDisplayID](repeating: 0, count: Int(count))
+        var written: UInt32 = 0
+        guard CGGetActiveDisplayList(count, &ids, &written) == .success, written > 0 else { return .null }
+        var union = CGRect.null
+        let limit = min(Int(written), ids.count)
+        for index in 0..<limit {
+            union = union.union(CGDisplayBounds(ids[index]))
+        }
+        return union
+    }
+}
+
+private func displayBoundsChanged(
+    _ display: CGDirectDisplayID,
+    _ flags: CGDisplayChangeSummaryFlags,
+    _ userInfo: UnsafeMutableRawPointer?
+) {
+    DisplayBoundsCache.shared.store(DisplayBoundsCache.activeUnion())
 }

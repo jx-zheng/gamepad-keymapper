@@ -176,14 +176,14 @@ enum ProfileSanitizer {
             action = .mouseMove(dx: clamp(dx, -4_000, 4_000), dy: clamp(dy, -4_000, 4_000))
         case .typeText(let text):
             var cleaned = ""
-            for scalar in text.prefix(maxSnippetLength).unicodeScalars where scalar.value >= 32 || scalar.value == 9 || scalar.value == 10 {
-                cleaned.unicodeScalars.append(scalar)
-            }
-            while cleaned.hasSuffix("\n") || cleaned.hasSuffix("\r") {
-                cleaned.removeLast()
-            }
-            if cleaned.contains("\n") || cleaned.contains("\r") {
-                warnings.append("A text snippet contains a line break. It is still typed as text.")
+            for scalar in text.prefix(maxSnippetLength).unicodeScalars {
+                if scalar.value == 10 || scalar.value == 13 {
+                    cleaned.unicodeScalars.append(Unicode.Scalar(32))
+                    continue
+                }
+                if scalar.value >= 32 || scalar.value == 9 {
+                    cleaned.unicodeScalars.append(scalar)
+                }
             }
             if Self.looksShellish(cleaned) {
                 warnings.append("A text snippet looks like a shell command. It is typed as text and is not run.")

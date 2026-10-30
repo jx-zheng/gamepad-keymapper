@@ -109,8 +109,8 @@ final class ControllerMonitor: NSObject {
                 id: session.sessionID,
                 name: session.displayName,
                 category: session.category,
-                battery: session.batteryDescription(),
-                hasMotion: session.controller.motion?.hasAttitudeAndRotationRate == true,
+                battery: session.batteryText(),
+                hasMotion: session.hasMotion,
                 elementNames: session.elementNames,
                 pressed: pressed(session.sessionID)
             )
@@ -306,6 +306,7 @@ private final class ControllerSession {
 
         watchStick(left, side: .left)
         watchStick(right, side: .right)
+        schedulePropertyRefresh()
     }
 
     func setMotionHandler(enabled: Bool) {
@@ -316,14 +317,15 @@ private final class ControllerSession {
         }
         motionInstalled = enabled
         lock.unlock()
-        onHandlerQueue { [weak self] in
-            guard let self, let motion = self.controller.motion else { return }
+        let controller = controller
+        controller.handlerQueue.async { [weak self] in
+            guard let self, let motion = controller.motion else { return }
             if motion.sensorsRequireManualActivation {
                 motion.sensorsActive = enabled
             }
             if enabled {
                 motion.valueChangedHandler = { [weak self] motion in
-                    guard let self, motion.hasAttitudeAndRotationRate else { return }
+                    guard let self, motion.hasAttitude, motion.hasRotationRate else { return }
                     let rate = motion.rotationRate
                     self.owner?.enqueueMotion(InputBatch.Motion(
                         sessionID: self.sessionID,
@@ -347,9 +349,9 @@ private final class ControllerSession {
         self.buttons.removeAll()
         self.dpads.removeAll()
         lock.unlock()
-        if controller.motion != nil {
-            onHandlerQueue { [weak self] in
-                guard let self, let motion = self.controller.motion else { return }
+        let controller = controller
+        controller.handlerQueue.async {
+            if let motion = controller.motion {
                 if motion.sensorsRequireManualActivation {
                     motion.sensorsActive = false
                 }
@@ -363,6 +365,20 @@ private final class ControllerSession {
         for dpad in dpads {
             dpad.valueChangedHandler = nil
         }
+    }
+
+    func batteryText() -> String? {
+        schedulePropertyRefresh()
+        lock.lock()
+        defer { lock.unlock() }
+        return cachedBattery
+    }
+
+    var hasMotion: Bool {
+        schedulePropertyRefresh()
+        lock.lock()
+        defer { lock.unlock() }
+        return cachedHasMotion
     }
 
     private func bind(_ input: GCControllerButtonInput, to button: ControllerButton) {
@@ -399,25 +415,32 @@ private final class ControllerSession {
         }
     }
 
-    func batteryDescription() -> String? {
-        onHandlerQueue {
-            guard let battery = self.controller.battery else { return nil }
-            switch battery.batteryState {
-            case .charging, .discharging, .full:
-                let percent = Int((battery.batteryLevel * 100).rounded())
-                return "\(percent)%"
-            default:
-                return nil
-            }
+    private var cachedBattery: String?
+    private var cachedHasMotion = false
+
+    private func schedulePropertyRefresh() {
+        let controller = controller
+        controller.handlerQueue.async { [weak self] in
+            guard let self else { return }
+            let battery = Self.batteryText(controller.battery)
+            let motion = controller.motion
+            let hasMotion = motion?.hasAttitude == true && motion?.hasRotationRate == true
+            self.lock.lock()
+            self.cachedBattery = battery
+            self.cachedHasMotion = hasMotion
+            self.lock.unlock()
         }
     }
 
-    private func onHandlerQueue<T>(_ body: @escaping () -> T) -> T {
-        let queue = controller.handlerQueue
-        if queue === DispatchQueue.main, Thread.isMainThread {
-            return body()
+    private static func batteryText(_ battery: GCDeviceBattery?) -> String? {
+        guard let battery else { return nil }
+        switch battery.batteryState {
+        case .charging, .discharging, .full:
+            let percent = Int((battery.batteryLevel * 100).rounded())
+            return "\(percent)%"
+        default:
+            return nil
         }
-        return queue.sync(execute: body)
     }
 
     private static func logicalButton(forGCName name: String) -> ControllerButton {

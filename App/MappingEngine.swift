@@ -13,6 +13,7 @@ final class MappingEngine {
     var onStatus: ((String) -> Void)?
 
     private let queue = DispatchQueue(label: "app.gamepadkeymapper.mapper", qos: .userInteractive)
+    private static let queueTokenKey = DispatchSpecificKey<UInt8>()
     private let signposter = OSSignposter(subsystem: "app.gamepadkeymapper", category: "mapping")
     private var interpreter = MappingInterpreter()
     private var profile: Profile?
@@ -31,6 +32,7 @@ final class MappingEngine {
     private let radial = RadialOverlay()
 
     init() {
+        queue.setSpecific(key: Self.queueTokenKey, value: 1)
         synthesizer = InputSynthesizer(queue: queue)
         monitor = ControllerMonitor(queue: queue)
         monitor.onBatch = { [weak self] batch in
@@ -55,21 +57,28 @@ final class MappingEngine {
     }
 
     func shutdown() {
-        queue.sync {
-            debounceTimer?.cancel()
-            debounceTimer = nil
-            pointerTimer?.cancel()
-            pointerTimer = nil
-            uiTimer?.cancel()
-            uiTimer = nil
-            let effects = interpreter.resetInteractions()
+        let finish = {
+            self.debounceTimer?.cancel()
+            self.debounceTimer = nil
+            self.pointerTimer?.cancel()
+            self.pointerTimer = nil
+            self.uiTimer?.cancel()
+            self.uiTimer = nil
+            let effects = self.interpreter.resetInteractions()
             for effect in effects {
                 if case .actionEnded(let action) = effect {
-                    synthesizer.end(action)
+                    self.synthesizer.end(action)
                 }
             }
-            synthesizer.releaseAll()
-            monitor.stop()
+            self.synthesizer.releaseAll()
+            // stop() only queues controller cleanup. It must not sync back to main,
+            // or quit deadlocks while this block is running inside queue.sync.
+            self.monitor.stop()
+        }
+        if DispatchQueue.getSpecific(key: Self.queueTokenKey) != nil {
+            finish()
+        } else {
+            queue.sync(execute: finish)
         }
         DispatchQueue.main.async { [radial] in
             radial.hide()

@@ -96,12 +96,24 @@ final class AppModel: ObservableObject {
         engine.start()
         refreshAccessibility(prompt: false)
         pushProfile()
+        // Register after init returns. A Task that captures self here is still the
+        // initializing self, and the Swift 6 compiler rejects that capture.
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.startLifetimeObservers()
+            if !self.settings.didFinishOnboarding || !self.accessibilityTrusted {
+                self.showEditor()
+            }
+        }
+    }
+
+    private func startLifetimeObservers() {
         sleepObserver = NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.willSleepNotification,
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            Task { @MainActor in
+            MainActor.assumeIsolated {
                 self?.engine.releaseHeldInputs()
             }
         }
@@ -110,14 +122,8 @@ final class AppModel: ObservableObject {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            Task { @MainActor in
+            MainActor.assumeIsolated {
                 self?.refreshAccessibility(prompt: false)
-            }
-        }
-        DispatchQueue.main.async { [weak self] in
-            guard let self else { return }
-            if !self.settings.didFinishOnboarding || !self.accessibilityTrusted {
-                self.showEditor()
             }
         }
     }
@@ -194,6 +200,7 @@ final class AppModel: ObservableObject {
                 try SMAppService.mainApp.unregister()
             }
         } catch {
+            settings.launchAtLogin = SMAppService.mainApp.status == .enabled
             alertMessage = "Couldn’t update the login item. \(error.localizedDescription)"
         }
         schedulePersist()
@@ -367,7 +374,7 @@ final class AppModel: ObservableObject {
         let bundle = Bundle(url: url)?.bundleIdentifier
         update(profileID) { profile in
             if let bundle, ProfileSanitizer.isBundleIdentifier(bundle) {
-                if !profile.bundleIdentifiers.contains(bundle) {
+                if !profile.bundleIdentifiers.contains(where: { $0.caseInsensitiveCompare(bundle) == .orderedSame }) {
                     profile.bundleIdentifiers.append(bundle)
                 }
             }
@@ -496,7 +503,14 @@ final class AppModel: ObservableObject {
     private func persistNow() {
         guard !suppressAutosave else { return }
         if archiveUnreadableOnNextSave {
-            archiveUnreadableProfiles()
+            do {
+                try archiveUnreadableProfiles()
+            } catch {
+                savesDisabled = true
+                suppressAutosave = true
+                alertMessage = "Couldn’t keep a copy of the unreadable profiles file (\(error.localizedDescription)). Saving stays off."
+                return
+            }
             archiveUnreadableOnNextSave = false
         }
         do {
@@ -509,13 +523,14 @@ final class AppModel: ObservableObject {
         }
     }
 
-    private func archiveUnreadableProfiles() {
+    /// Copies the unreadable file aside before the first write that would replace it.
+    private func archiveUnreadableProfiles() throws {
         let source = store.profilesURL
         guard FileManager.default.fileExists(atPath: source.path) else { return }
-        let stamp = ISO8601DateFormatter().string(from: Date()).replacingOccurrences(of: ":", with: "-")
+        let stamp = String(Int(Date().timeIntervalSince1970 * 1000))
         let destination = source.deletingLastPathComponent()
-            .appendingPathComponent("profiles.unreadable-\(stamp).json")
-        try? FileManager.default.copyItem(at: source, to: destination)
+            .appendingPathComponent("profiles.unreadable-\(stamp)-\(UUID().uuidString).json")
+        try FileManager.default.copyItem(at: source, to: destination)
     }
 
     private func pushProfile() {
