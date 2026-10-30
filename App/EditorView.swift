@@ -1161,14 +1161,9 @@ private struct DevicesView: View {
                 Text("Inputs")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 128), spacing: 8, alignment: .leading)], alignment: .leading, spacing: 8) {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 168), spacing: 8, alignment: .leading)], alignment: .leading, spacing: 8) {
                     ForEach(controller.elementNames, id: \.self) { name in
-                        Text(name)
-                            .font(.caption)
-                            .lineLimit(1)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 5)
-                            .background(Color.primary.opacity(0.06), in: Capsule())
+                        inputChip(name)
                     }
                 }
             }
@@ -1176,6 +1171,23 @@ private struct DevicesView: View {
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    private func inputChip(_ name: String) -> some View {
+        let button = ControllerButton.catalog.first { $0.displayName == name } ?? ControllerButton(id: name)
+        return HStack(spacing: 6) {
+            ControlGlyph(button: button)
+            Text(name)
+                .font(.caption)
+                .lineLimit(1)
+                .truncationMode(.tail)
+        }
+        .padding(.leading, 4)
+        .padding(.trailing, 10)
+        .padding(.vertical, 4)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .accessibilityElement(children: .combine)
     }
 
     private func batteryLabel(_ value: String?) -> String {
