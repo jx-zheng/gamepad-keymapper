@@ -388,6 +388,24 @@ struct ProfileDocument: Equatable, Hashable, Codable {
         version = Self.currentVersion
         self.profiles = profiles
     }
+
+    /// Folds imported profiles into this document.
+    ///
+    /// A profile whose id is already present replaces that profile, or is skipped when the
+    /// contents already match. New ids are appended. This does not mint a second copy.
+    func merging(_ incoming: ProfileDocument) -> ProfileDocument {
+        var profiles = self.profiles
+        for profile in incoming.profiles {
+            if let index = profiles.firstIndex(where: { $0.id == profile.id }) {
+                if profiles[index] != profile {
+                    profiles[index] = profile
+                }
+            } else {
+                profiles.append(profile)
+            }
+        }
+        return ProfileDocument(profiles: profiles)
+    }
 }
 
 struct AppSettings: Equatable, Codable {

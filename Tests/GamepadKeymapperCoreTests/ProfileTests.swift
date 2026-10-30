@@ -11,6 +11,33 @@ final class ProfileTests: XCTestCase {
         XCTAssertTrue(imported.warnings.isEmpty)
     }
 
+    func testReimportingTheSampleDoesNotDuplicateProfiles() throws {
+        let sample = SampleProfiles.document()
+        let merged = sample.merging(sample)
+        XCTAssertEqual(merged, sample)
+        XCTAssertEqual(merged.profiles.map(\.name), ["Desktop", "Xcode"])
+
+        let url = repoRoot().appendingPathComponent("Samples/desktop-navigation.json")
+        let file = try ProfileCodec.decode(Data(contentsOf: url))
+        let fromFile = sample.merging(file)
+        XCTAssertEqual(fromFile.profiles.count, sample.profiles.count)
+        XCTAssertEqual(fromFile.profiles.map(\.id), sample.profiles.map(\.id))
+        XCTAssertEqual(fromFile.profiles.map(\.name), sample.profiles.map(\.name))
+
+        var incoming = ProfileDocument(profiles: [sample.profiles[0]])
+        incoming.profiles[0].name = "Desktop from file"
+        let replaced = sample.merging(incoming)
+        XCTAssertEqual(replaced.profiles.count, sample.profiles.count)
+        XCTAssertEqual(replaced.profiles[0].id, sample.profiles[0].id)
+        XCTAssertEqual(replaced.profiles[0].name, "Desktop from file")
+        XCTAssertEqual(replaced.profiles[1].name, "Xcode")
+
+        let extra = Profile.starter(name: "Extra", isDefault: false)
+        let appended = sample.merging(ProfileDocument(profiles: [extra]))
+        XCTAssertEqual(appended.profiles.count, sample.profiles.count + 1)
+        XCTAssertEqual(appended.profiles.last?.id, extra.id)
+    }
+
     func testCheckedInSampleMatchesFactory() throws {
         let url = repoRoot().appendingPathComponent("Samples/desktop-navigation.json")
         if ProcessInfo.processInfo.environment["DUMP_SAMPLE"] == "1" {

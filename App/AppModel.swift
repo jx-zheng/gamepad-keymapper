@@ -391,21 +391,10 @@ final class AppModel: ObservableObject {
         do {
             let data = try Data(contentsOf: url)
             let report = try ProfileCodec.importDocument(data)
-            var merged = document
-            var collisionWarnings: [String] = []
-            for profile in report.document.profiles {
-                if merged.profiles.contains(where: { $0.id == profile.id }) {
-                    var copy = profile
-                    copy.id = UUID()
-                    merged.profiles.append(copy)
-                    collisionWarnings.append("“\(profile.name)” was imported with a new id because that id is already in use.")
-                } else {
-                    merged.profiles.append(profile)
-                }
-            }
+            let merged = document.merging(report.document)
             let sanitized = try ProfileSanitizer.sanitize(merged)
             document = sanitized.document
-            importWarnings = report.warnings + collisionWarnings + sanitized.warnings
+            importWarnings = report.warnings + sanitized.warnings
             if !importWarnings.isEmpty {
                 alertMessage = importWarnings.prefix(4).joined(separator: "\n")
             }

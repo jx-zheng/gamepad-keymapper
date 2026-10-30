@@ -155,12 +155,12 @@ final class MappingEngine {
     }
 
     func test(_ action: MapperAction) {
-        queue.async {
+        queue.async { [weak self] in
+            guard let self else { return }
             self.perform([.actionBegan(action)])
-            if action.sustainsWhileHeld {
-                self.queue.asyncAfter(deadline: .now() + 0.05) { [weak self] in
-                    self?.perform([.actionEnded(action)])
-                }
+            guard action.sustainsWhileHeld else { return }
+            self.queue.asyncAfter(deadline: .now() + 0.05) {
+                self.perform([.actionEnded(action)])
             }
         }
     }
