@@ -1,0 +1,739 @@
+{
+  "format" : "gamepad-keymapper.profiles",
+  "profiles" : [
+    {
+      "bundleIdentifiers" : [
+
+      ],
+      "enabled" : true,
+      "gyro" : {
+        "activation" : {
+          "button" : "leftTrigger",
+          "type" : "whileHeld"
+        },
+        "deadzone" : 0.12,
+        "enabled" : false,
+        "invertX" : false,
+        "invertY" : false,
+        "sensitivity" : 800
+      },
+      "id" : "E4A1C0DE-0001-4000-8000-000000000001",
+      "isDefault" : true,
+      "layers" : [
+        {
+          "activation" : {
+            "type" : "base"
+          },
+          "allowsFallthrough" : true,
+          "bindings" : [
+            {
+              "action" : {
+                "button" : "left",
+                "clicks" : 1,
+                "type" : "mouseClick"
+              },
+              "button" : "a",
+              "controllerMatch" : {
+                "type" : "any"
+              },
+              "id" : "E4A1C0DE-0001-4000-8000-000000000011"
+            },
+            {
+              "action" : {
+                "button" : "right",
+                "clicks" : 1,
+                "type" : "mouseClick"
+              },
+              "button" : "b",
+              "controllerMatch" : {
+                "type" : "any"
+              },
+              "id" : "E4A1C0DE-0001-4000-8000-000000000012"
+            },
+            {
+              "action" : {
+                "holdLast" : false,
+                "steps" : [
+                  {
+                    "delayMilliseconds" : 0,
+                    "key" : "space",
+                    "modifiers" : [
+                      "command"
+                    ]
+                  }
+                ],
+                "type" : "keyboard"
+              },
+              "button" : "x",
+              "controllerMatch" : {
+                "type" : "any"
+              },
+              "id" : "E4A1C0DE-0001-4000-8000-000000000013"
+            },
+            {
+              "action" : {
+                "holdLast" : false,
+                "steps" : [
+                  {
+                    "delayMilliseconds" : 0,
+                    "key" : "return",
+                    "modifiers" : [
+
+                    ]
+                  }
+                ],
+                "type" : "keyboard"
+              },
+              "button" : "y",
+              "controllerMatch" : {
+                "type" : "any"
+              },
+              "id" : "E4A1C0DE-0001-4000-8000-000000000014"
+            },
+            {
+              "action" : {
+                "holdLast" : true,
+                "steps" : [
+                  {
+                    "delayMilliseconds" : 0,
+                    "key" : "upArrow",
+                    "modifiers" : [
+
+                    ]
+                  }
+                ],
+                "type" : "keyboard"
+              },
+              "button" : "dpadUp",
+              "controllerMatch" : {
+                "type" : "any"
+              },
+              "id" : "E4A1C0DE-0001-4000-8000-000000000015"
+            },
+            {
+              "action" : {
+                "holdLast" : true,
+                "steps" : [
+                  {
+                    "delayMilliseconds" : 0,
+                    "key" : "downArrow",
+                    "modifiers" : [
+
+                    ]
+                  }
+                ],
+                "type" : "keyboard"
+              },
+              "button" : "dpadDown",
+              "controllerMatch" : {
+                "type" : "any"
+              },
+              "id" : "E4A1C0DE-0001-4000-8000-000000000016"
+            },
+            {
+              "action" : {
+                "holdLast" : true,
+                "steps" : [
+                  {
+                    "delayMilliseconds" : 0,
+                    "key" : "leftArrow",
+                    "modifiers" : [
+
+                    ]
+                  }
+                ],
+                "type" : "keyboard"
+              },
+              "button" : "dpadLeft",
+              "controllerMatch" : {
+                "type" : "any"
+              },
+              "id" : "E4A1C0DE-0001-4000-8000-000000000017"
+            },
+            {
+              "action" : {
+                "holdLast" : true,
+                "steps" : [
+                  {
+                    "delayMilliseconds" : 0,
+                    "key" : "rightArrow",
+                    "modifiers" : [
+
+                    ]
+                  }
+                ],
+                "type" : "keyboard"
+              },
+              "button" : "dpadRight",
+              "controllerMatch" : {
+                "type" : "any"
+              },
+              "id" : "E4A1C0DE-0001-4000-8000-000000000018"
+            },
+            {
+              "action" : {
+                "key" : "playPause",
+                "type" : "media"
+              },
+              "button" : "rightShoulder",
+              "controllerMatch" : {
+                "type" : "any"
+              },
+              "id" : "E4A1C0DE-0001-4000-8000-000000000019"
+            },
+            {
+              "action" : {
+                "key" : "mute",
+                "type" : "media"
+              },
+              "button" : "leftStickClick",
+              "controllerMatch" : {
+                "type" : "any"
+              },
+              "id" : "E4A1C0DE-0001-4000-8000-00000000001A"
+            },
+            {
+              "action" : {
+                "holdLast" : false,
+                "steps" : [
+                  {
+                    "delayMilliseconds" : 0,
+                    "key" : "upArrow",
+                    "modifiers" : [
+                      "control"
+                    ]
+                  }
+                ],
+                "type" : "keyboard"
+              },
+              "button" : "rightStickClick",
+              "controllerMatch" : {
+                "type" : "any"
+              },
+              "id" : "E4A1C0DE-0001-4000-8000-00000000001B"
+            },
+            {
+              "action" : {
+                "text" : "Hello from Gamepad Keymapper",
+                "type" : "typeText"
+              },
+              "button" : "options",
+              "controllerMatch" : {
+                "type" : "any"
+              },
+              "id" : "E4A1C0DE-0001-4000-8000-00000000001C"
+            }
+          ],
+          "id" : "E4A1C0DE-0001-4000-8000-000000000002",
+          "name" : "Base"
+        },
+        {
+          "activation" : {
+            "button" : "leftShoulder",
+            "type" : "hold"
+          },
+          "allowsFallthrough" : true,
+          "bindings" : [
+            {
+              "action" : {
+                "holdLast" : false,
+                "steps" : [
+                  {
+                    "delayMilliseconds" : 0,
+                    "key" : "c",
+                    "modifiers" : [
+                      "command"
+                    ]
+                  }
+                ],
+                "type" : "keyboard"
+              },
+              "button" : "a",
+              "controllerMatch" : {
+                "type" : "any"
+              },
+              "id" : "E4A1C0DE-0001-4000-8000-000000000021"
+            },
+            {
+              "action" : {
+                "holdLast" : false,
+                "steps" : [
+                  {
+                    "delayMilliseconds" : 0,
+                    "key" : "v",
+                    "modifiers" : [
+                      "command"
+                    ]
+                  }
+                ],
+                "type" : "keyboard"
+              },
+              "button" : "b",
+              "controllerMatch" : {
+                "type" : "any"
+              },
+              "id" : "E4A1C0DE-0001-4000-8000-000000000022"
+            },
+            {
+              "action" : {
+                "holdLast" : false,
+                "steps" : [
+                  {
+                    "delayMilliseconds" : 0,
+                    "key" : "x",
+                    "modifiers" : [
+                      "command"
+                    ]
+                  }
+                ],
+                "type" : "keyboard"
+              },
+              "button" : "x",
+              "controllerMatch" : {
+                "type" : "any"
+              },
+              "id" : "E4A1C0DE-0001-4000-8000-000000000023"
+            },
+            {
+              "action" : {
+                "holdLast" : false,
+                "steps" : [
+                  {
+                    "delayMilliseconds" : 0,
+                    "key" : "z",
+                    "modifiers" : [
+                      "command"
+                    ]
+                  }
+                ],
+                "type" : "keyboard"
+              },
+              "button" : "y",
+              "controllerMatch" : {
+                "type" : "any"
+              },
+              "id" : "E4A1C0DE-0001-4000-8000-000000000024"
+            },
+            {
+              "action" : {
+                "holdLast" : false,
+                "steps" : [
+                  {
+                    "delayMilliseconds" : 0,
+                    "key" : "pageUp",
+                    "modifiers" : [
+
+                    ]
+                  }
+                ],
+                "type" : "keyboard"
+              },
+              "button" : "dpadUp",
+              "controllerMatch" : {
+                "type" : "any"
+              },
+              "id" : "E4A1C0DE-0001-4000-8000-000000000025"
+            },
+            {
+              "action" : {
+                "holdLast" : false,
+                "steps" : [
+                  {
+                    "delayMilliseconds" : 0,
+                    "key" : "pageDown",
+                    "modifiers" : [
+
+                    ]
+                  }
+                ],
+                "type" : "keyboard"
+              },
+              "button" : "dpadDown",
+              "controllerMatch" : {
+                "type" : "any"
+              },
+              "id" : "E4A1C0DE-0001-4000-8000-000000000026"
+            }
+          ],
+          "id" : "E4A1C0DE-0001-4000-8000-000000000003",
+          "name" : "Editing"
+        }
+      ],
+      "name" : "Desktop",
+      "radialMenus" : [
+        {
+          "id" : "E4A1C0DE-0001-4000-8000-000000000004",
+          "items" : [
+            {
+              "action" : {
+                "bundleIdentifier" : "com.apple.TextEdit",
+                "type" : "launchApp"
+              },
+              "id" : "E4A1C0DE-0001-4000-8000-000000000031",
+              "label" : "TextEdit"
+            },
+            {
+              "action" : {
+                "bundleIdentifier" : "com.apple.Safari",
+                "type" : "launchApp"
+              },
+              "id" : "E4A1C0DE-0001-4000-8000-000000000032",
+              "label" : "Safari"
+            },
+            {
+              "action" : {
+                "bundleIdentifier" : "com.apple.systempreferences",
+                "type" : "launchApp"
+              },
+              "id" : "E4A1C0DE-0001-4000-8000-000000000033",
+              "label" : "Settings"
+            },
+            {
+              "action" : {
+                "key" : "playPause",
+                "type" : "media"
+              },
+              "id" : "E4A1C0DE-0001-4000-8000-000000000034",
+              "label" : "Play/Pause"
+            },
+            {
+              "action" : {
+                "holdLast" : false,
+                "steps" : [
+                  {
+                    "delayMilliseconds" : 0,
+                    "key" : "space",
+                    "modifiers" : [
+                      "command"
+                    ]
+                  }
+                ],
+                "type" : "keyboard"
+              },
+              "id" : "E4A1C0DE-0001-4000-8000-000000000035",
+              "label" : "Spotlight"
+            },
+            {
+              "action" : {
+                "text" : "— ",
+                "type" : "typeText"
+              },
+              "id" : "E4A1C0DE-0001-4000-8000-000000000036",
+              "label" : "Snippet"
+            }
+          ],
+          "name" : "Quick Actions",
+          "selection" : "dpad",
+          "trigger" : "menu"
+        }
+      ],
+      "sticks" : {
+        "left" : {
+          "sensitivity" : 1080,
+          "type" : "mouse"
+        },
+        "right" : {
+          "sensitivity" : 360,
+          "type" : "scroll"
+        }
+      }
+    },
+    {
+      "bundleIdentifiers" : [
+        "com.apple.dt.Xcode"
+      ],
+      "enabled" : true,
+      "gyro" : {
+        "activation" : {
+          "button" : "leftTrigger",
+          "type" : "whileHeld"
+        },
+        "deadzone" : 0.12,
+        "enabled" : false,
+        "invertX" : false,
+        "invertY" : false,
+        "sensitivity" : 800
+      },
+      "id" : "E4A1C0DE-0002-4000-8000-000000000001",
+      "isDefault" : false,
+      "layers" : [
+        {
+          "activation" : {
+            "type" : "base"
+          },
+          "allowsFallthrough" : true,
+          "bindings" : [
+            {
+              "action" : {
+                "holdLast" : false,
+                "steps" : [
+                  {
+                    "delayMilliseconds" : 0,
+                    "key" : "r",
+                    "modifiers" : [
+                      "command"
+                    ]
+                  }
+                ],
+                "type" : "keyboard"
+              },
+              "button" : "a",
+              "controllerMatch" : {
+                "type" : "any"
+              },
+              "id" : "E4A1C0DE-0002-4000-8000-000000000011"
+            },
+            {
+              "action" : {
+                "holdLast" : false,
+                "steps" : [
+                  {
+                    "delayMilliseconds" : 0,
+                    "key" : "period",
+                    "modifiers" : [
+                      "command"
+                    ]
+                  }
+                ],
+                "type" : "keyboard"
+              },
+              "button" : "b",
+              "controllerMatch" : {
+                "type" : "any"
+              },
+              "id" : "E4A1C0DE-0002-4000-8000-000000000012"
+            },
+            {
+              "action" : {
+                "holdLast" : false,
+                "steps" : [
+                  {
+                    "delayMilliseconds" : 0,
+                    "key" : "b",
+                    "modifiers" : [
+                      "command"
+                    ]
+                  }
+                ],
+                "type" : "keyboard"
+              },
+              "button" : "x",
+              "controllerMatch" : {
+                "type" : "any"
+              },
+              "id" : "E4A1C0DE-0002-4000-8000-000000000013"
+            },
+            {
+              "action" : {
+                "holdLast" : false,
+                "steps" : [
+                  {
+                    "delayMilliseconds" : 0,
+                    "key" : "slash",
+                    "modifiers" : [
+                      "command"
+                    ]
+                  }
+                ],
+                "type" : "keyboard"
+              },
+              "button" : "y",
+              "controllerMatch" : {
+                "type" : "any"
+              },
+              "id" : "E4A1C0DE-0002-4000-8000-000000000014"
+            },
+            {
+              "action" : {
+                "holdLast" : true,
+                "steps" : [
+                  {
+                    "delayMilliseconds" : 0,
+                    "key" : "upArrow",
+                    "modifiers" : [
+
+                    ]
+                  }
+                ],
+                "type" : "keyboard"
+              },
+              "button" : "dpadUp",
+              "controllerMatch" : {
+                "type" : "any"
+              },
+              "id" : "E4A1C0DE-0002-4000-8000-000000000015"
+            },
+            {
+              "action" : {
+                "holdLast" : true,
+                "steps" : [
+                  {
+                    "delayMilliseconds" : 0,
+                    "key" : "downArrow",
+                    "modifiers" : [
+
+                    ]
+                  }
+                ],
+                "type" : "keyboard"
+              },
+              "button" : "dpadDown",
+              "controllerMatch" : {
+                "type" : "any"
+              },
+              "id" : "E4A1C0DE-0002-4000-8000-000000000016"
+            },
+            {
+              "action" : {
+                "holdLast" : true,
+                "steps" : [
+                  {
+                    "delayMilliseconds" : 0,
+                    "key" : "leftArrow",
+                    "modifiers" : [
+
+                    ]
+                  }
+                ],
+                "type" : "keyboard"
+              },
+              "button" : "dpadLeft",
+              "controllerMatch" : {
+                "type" : "any"
+              },
+              "id" : "E4A1C0DE-0002-4000-8000-000000000017"
+            },
+            {
+              "action" : {
+                "holdLast" : true,
+                "steps" : [
+                  {
+                    "delayMilliseconds" : 0,
+                    "key" : "rightArrow",
+                    "modifiers" : [
+
+                    ]
+                  }
+                ],
+                "type" : "keyboard"
+              },
+              "button" : "dpadRight",
+              "controllerMatch" : {
+                "type" : "any"
+              },
+              "id" : "E4A1C0DE-0002-4000-8000-000000000018"
+            }
+          ],
+          "id" : "E4A1C0DE-0002-4000-8000-000000000002",
+          "name" : "Base"
+        },
+        {
+          "activation" : {
+            "button" : "leftShoulder",
+            "type" : "hold"
+          },
+          "allowsFallthrough" : true,
+          "bindings" : [
+            {
+              "action" : {
+                "holdLast" : false,
+                "steps" : [
+                  {
+                    "delayMilliseconds" : 0,
+                    "key" : "f6",
+                    "modifiers" : [
+
+                    ]
+                  }
+                ],
+                "type" : "keyboard"
+              },
+              "button" : "a",
+              "controllerMatch" : {
+                "type" : "any"
+              },
+              "id" : "E4A1C0DE-0002-4000-8000-000000000021"
+            },
+            {
+              "action" : {
+                "holdLast" : false,
+                "steps" : [
+                  {
+                    "delayMilliseconds" : 0,
+                    "key" : "f7",
+                    "modifiers" : [
+
+                    ]
+                  }
+                ],
+                "type" : "keyboard"
+              },
+              "button" : "b",
+              "controllerMatch" : {
+                "type" : "any"
+              },
+              "id" : "E4A1C0DE-0002-4000-8000-000000000022"
+            },
+            {
+              "action" : {
+                "holdLast" : false,
+                "steps" : [
+                  {
+                    "delayMilliseconds" : 0,
+                    "key" : "period",
+                    "modifiers" : [
+                      "command"
+                    ]
+                  }
+                ],
+                "type" : "keyboard"
+              },
+              "button" : "x",
+              "controllerMatch" : {
+                "type" : "any"
+              },
+              "id" : "E4A1C0DE-0002-4000-8000-000000000023"
+            },
+            {
+              "action" : {
+                "holdLast" : false,
+                "steps" : [
+                  {
+                    "delayMilliseconds" : 0,
+                    "key" : "o",
+                    "modifiers" : [
+                      "shift",
+                      "command"
+                    ]
+                  }
+                ],
+                "type" : "keyboard"
+              },
+              "button" : "y",
+              "controllerMatch" : {
+                "type" : "any"
+              },
+              "id" : "E4A1C0DE-0002-4000-8000-000000000024"
+            }
+          ],
+          "id" : "E4A1C0DE-0002-4000-8000-000000000003",
+          "name" : "Debug"
+        }
+      ],
+      "name" : "Xcode",
+      "radialMenus" : [
+
+      ],
+      "sticks" : {
+        "left" : {
+          "type" : "digital"
+        },
+        "right" : {
+          "sensitivity" : 240,
+          "type" : "scroll"
+        }
+      }
+    }
+  ],
+  "version" : 1
+}
