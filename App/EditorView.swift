@@ -213,7 +213,8 @@ private struct ProfileEditor: View {
 private struct BindingsTab: View {
     @EnvironmentObject private var model: AppModel
     let profile: Profile
-    @State private var selectedBinding: UUID?
+    @State private var selectedButtonID: String?
+    @State private var unmappedDraft = MapperAction.keyboard(.tap("space"))
 
     private var layer: Layer? {
         if let id = model.editingLayerID, let match = profile.layers.first(where: { $0.id == id }) {
@@ -244,36 +245,24 @@ private struct BindingsTab: View {
                         Spacer()
                         Button("Add Binding") {
                             model.editingLayerID = layer.id
+                            selectedButtonID = ControllerButton.a.id
                             model.addBinding(profileID: profile.id, layerID: layer.id)
                         }
                         .disabled(layer.bindings.count >= ProfileSanitizer.maxBindings)
                     }
                     layerActivation(layer)
-                    List(selection: $selectedBinding) {
-                        ForEach(layer.bindings) { binding in
-                            HStack(spacing: 8) {
-                                Text(binding.button.displayName)
-                                    .lineLimit(1)
-                                    .truncationMode(.tail)
-                                    .frame(minWidth: 96, idealWidth: 140, maxWidth: 180, alignment: .leading)
-                                    .layoutPriority(1)
-                                Text(binding.action.summary)
-                                    .foregroundStyle(.secondary)
-                                    .lineLimit(1)
-                                    .truncationMode(.tail)
-                                Spacer(minLength: 0)
-                                if model.captureBindingID == binding.id {
-                                    Text("Press a button…")
-                                        .font(.caption)
-                                        .foregroundStyle(Color.accentColor)
-                                        .lineLimit(1)
-                                        .fixedSize(horizontal: true, vertical: false)
+                    List(selection: $selectedButtonID) {
+                        ForEach(ControlSection.editor) { section in
+                            Section(section.title) {
+                                ForEach(section.buttons, id: \.id) { button in
+                                    controlRow(button, in: layer)
                                 }
                             }
-                            .tag(Optional(binding.id))
-                            .contextMenu {
-                                Button("Delete") {
-                                    model.deleteBinding(profileID: profile.id, layerID: layer.id, bindingID: binding.id)
+                        }
+                        if !extraButtons(in: layer).isEmpty {
+                            Section("Other") {
+                                ForEach(extraButtons(in: layer), id: \.id) { button in
+                                    controlRow(button, in: layer)
                                 }
                             }
                         }
@@ -293,10 +282,10 @@ private struct BindingsTab: View {
             .layoutPriority(1)
 
             Group {
-                if let layer, let binding = layer.bindings.first(where: { $0.id == selectedBinding }) {
-                    inspector(layer: layer, binding: binding)
+                if let layer, let button = selectedControl(in: layer) {
+                    inspector(layer: layer, button: button)
                 } else {
-                    ContentUnavailableView("Select a Binding", systemImage: "hand.tap", description: Text("Choose a row, or add a binding and press a controller button."))
+                    ContentUnavailableView("Select a Control", systemImage: "gamecontroller", description: Text("Choose a button, stick, or trigger to edit its action."))
                 }
             }
             .frame(minWidth: 260, idealWidth: 340, maxWidth: 420, alignment: .leading)
@@ -305,8 +294,67 @@ private struct BindingsTab: View {
         }
         .onAppear {
             model.editingLayerID = layer?.id ?? profile.layers.first?.id
-            if selectedBinding == nil {
-                selectedBinding = layer?.bindings.first?.id
+            if selectedButtonID == nil {
+                selectedButtonID = layer?.bindings.first?.button.id ?? ControllerButton.a.id
+            }
+        }
+        .onChange(of: selectedButtonID) { _, _ in
+            unmappedDraft = .keyboard(.tap("space"))
+        }
+    }
+
+    private func binding(for button: ControllerButton, in layer: Layer) -> ButtonBinding? {
+        layer.bindings.first { $0.button.id == button.id }
+    }
+
+    private func extraButtons(in layer: Layer) -> [ControllerButton] {
+        let known = Set(ControlSection.editor.flatMap { $0.buttons.map(\.id) })
+        var seen = Set<String>()
+        return layer.bindings.compactMap { binding in
+            guard !known.contains(binding.button.id), seen.insert(binding.button.id).inserted else { return nil }
+            return binding.button
+        }
+    }
+
+    private func selectedControl(in layer: Layer) -> ControllerButton? {
+        guard let selectedButtonID else { return nil }
+        if let known = ControlSection.editor.flatMap(\.buttons).first(where: { $0.id == selectedButtonID }) {
+            return known
+        }
+        return extraButtons(in: layer).first { $0.id == selectedButtonID }
+    }
+
+    private func controlRow(_ button: ControllerButton, in layer: Layer) -> some View {
+        let binding = binding(for: button, in: layer)
+        let summary = binding?.action.summary ?? "Not Mapped"
+        let listening = layer.bindings.contains { $0.button.id == button.id && $0.id == model.captureBindingID }
+        return HStack(spacing: 8) {
+            ControlGlyph(button: button)
+            Text(button.displayName)
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .layoutPriority(1)
+            Spacer(minLength: 8)
+            if listening {
+                Text("Press a button…")
+                    .font(.caption)
+                    .foregroundStyle(Color.accentColor)
+                    .lineLimit(1)
+            } else {
+                Text(summary)
+                    .font(.callout)
+                    .foregroundStyle(binding == nil ? Color.secondary.opacity(0.7) : Color.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+            }
+        }
+        .padding(.vertical, 2)
+        .tag(Optional(button.id))
+        .contextMenu {
+            if let binding {
+                Button("Delete") {
+                    model.deleteBinding(profileID: profile.id, layerID: layer.id, bindingID: binding.id)
+                }
             }
         }
     }
@@ -323,49 +371,72 @@ private struct BindingsTab: View {
         )
     }
 
-    private func inspector(layer: Layer, binding: ButtonBinding) -> some View {
-        ScrollView {
+    private func inspector(layer: Layer, button: ControllerButton) -> some View {
+        let binding = binding(for: button, in: layer)
+        return ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                Text(binding.button.displayName)
-                    .font(.headline)
-                HStack(spacing: 8) {
-                    Picker("Button", selection: Binding(
-                        get: { binding.button.id },
-                        set: { id in
-                            if id != binding.button.id, model.captureBindingID == binding.id {
-                                model.disarmCapture()
-                            }
-                            model.update(profile.id) { profile in
-                                guard let layerIndex = profile.layers.firstIndex(where: { $0.id == layer.id }),
-                                      let bindingIndex = profile.layers[layerIndex].bindings.firstIndex(where: { $0.id == binding.id }) else { return }
-                                profile.layers[layerIndex].bindings[bindingIndex].button = ControllerButton(id: id)
-                            }
-                        }
-                    )) {
-                        ForEach(ControllerButton.catalog, id: \.id) { button in
-                            Text(button.displayName).tag(button.id)
-                        }
-                    }
-                    .frame(minWidth: 140)
-                    .layoutPriority(1)
-                    Button(model.captureBindingID == binding.id ? "Listening…" : "Capture") {
-                        model.editingLayerID = layer.id
-                        model.beginCapture(bindingID: binding.id)
-                    }
-                    .fixedSize(horizontal: true, vertical: false)
+                HStack(spacing: 10) {
+                    ControlGlyph(button: button)
+                    Text(button.displayName)
+                        .font(.headline)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-                ActionEditor(
-                    action: binding.action,
-                    shortcutNames: model.shortcutNames,
-                    onChange: { action in
-                        model.setAction(profileID: profile.id, layerID: layer.id, bindingID: binding.id, action: action)
-                    },
-                    onTest: { model.test(action: binding.action) },
-                    onRefreshShortcuts: { model.refreshShortcuts() }
-                )
-                Button("Delete Binding", role: .destructive) {
-                    model.deleteBinding(profileID: profile.id, layerID: layer.id, bindingID: binding.id)
-                    selectedBinding = nil
+                if let binding {
+                    HStack(spacing: 8) {
+                        Picker("Button", selection: Binding(
+                            get: { binding.button.id },
+                            set: { id in
+                                if id != binding.button.id, model.captureBindingID == binding.id {
+                                    model.disarmCapture()
+                                }
+                                model.update(profile.id) { profile in
+                                    guard let layerIndex = profile.layers.firstIndex(where: { $0.id == layer.id }),
+                                          let bindingIndex = profile.layers[layerIndex].bindings.firstIndex(where: { $0.id == binding.id }) else { return }
+                                    profile.layers[layerIndex].bindings[bindingIndex].button = ControllerButton(id: id)
+                                }
+                                selectedButtonID = id
+                            }
+                        )) {
+                            ForEach(ControllerButton.catalog, id: \.id) { item in
+                                Text(item.displayName).tag(item.id)
+                            }
+                        }
+                        .frame(minWidth: 140)
+                        .layoutPriority(1)
+                        Button(model.captureBindingID == binding.id ? "Listening…" : "Capture") {
+                            model.editingLayerID = layer.id
+                            model.beginCapture(bindingID: binding.id)
+                        }
+                        .fixedSize(horizontal: true, vertical: false)
+                    }
+                    ActionEditor(
+                        action: binding.action,
+                        shortcutNames: model.shortcutNames,
+                        onChange: { action in
+                            model.setAction(profileID: profile.id, layerID: layer.id, bindingID: binding.id, action: action)
+                        },
+                        onTest: { model.test(action: binding.action) },
+                        onRefreshShortcuts: { model.refreshShortcuts() }
+                    )
+                    Button("Delete Binding", role: .destructive) {
+                        model.deleteBinding(profileID: profile.id, layerID: layer.id, bindingID: binding.id)
+                    }
+                } else {
+                    Text("Not mapped. Choose an action to add it.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    ActionEditor(
+                        action: unmappedDraft,
+                        shortcutNames: model.shortcutNames,
+                        onChange: { action in
+                            unmappedDraft = action
+                            model.setActionForButton(profileID: profile.id, layerID: layer.id, button: button, action: action)
+                        },
+                        onTest: { model.test(action: unmappedDraft) },
+                        onRefreshShortcuts: { model.refreshShortcuts() }
+                    )
                 }
             }
         }

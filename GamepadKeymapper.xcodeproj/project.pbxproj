@@ -29,6 +29,7 @@
 		54628DF94BA9B9CD246EDB2A /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		E665FA2E22B110AA6A0F683F /* ControllerMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControllerMonitor.swift; sourceTree = "<group>"; };
 		21A9DF5692AD08E355284431 /* EditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorView.swift; sourceTree = "<group>"; };
+		C0C0DE0000000000000000A1 /* ControlGlyph.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlGlyph.swift; sourceTree = "<group>"; };
 		064B99491DED757747164F8A /* GamepadKeymapperApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GamepadKeymapperApp.swift; sourceTree = "<group>"; };
 		E554962E01E664B1F7F7A2A8 /* InputSynthesizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InputSynthesizer.swift; sourceTree = "<group>"; };
 		0256FBA8C5077E45099E30E5 /* MappingEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MappingEngine.swift; sourceTree = "<group>"; };
@@ -53,6 +54,7 @@
 		6647B957C0BCE26BFBFC83FE /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54628DF94BA9B9CD246EDB2A /* AppModel.swift */; };
 		CBD764250B1600F59EF97BBF /* ControllerMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = E665FA2E22B110AA6A0F683F /* ControllerMonitor.swift */; };
 		4084D4095CA3C1F4F6EB1482 /* EditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21A9DF5692AD08E355284431 /* EditorView.swift */; };
+		C0C0DE0000000000000000A2 /* ControlGlyph.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0C0DE0000000000000000A1 /* ControlGlyph.swift */; };
 		B14E063C1E0D0712A694094C /* GamepadKeymapperApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 064B99491DED757747164F8A /* GamepadKeymapperApp.swift */; };
 		D14BE43F068C04F32480CF44 /* InputSynthesizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = E554962E01E664B1F7F7A2A8 /* InputSynthesizer.swift */; };
 		7F0A63038071E46294464838 /* MappingEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0256FBA8C5077E45099E30E5 /* MappingEngine.swift */; };
@@ -79,6 +81,7 @@
 				6647B957C0BCE26BFBFC83FE /* AppModel.swift in Sources */,
 				CBD764250B1600F59EF97BBF /* ControllerMonitor.swift in Sources */,
 				4084D4095CA3C1F4F6EB1482 /* EditorView.swift in Sources */,
+				C0C0DE0000000000000000A2 /* ControlGlyph.swift in Sources */,
 				B14E063C1E0D0712A694094C /* GamepadKeymapperApp.swift in Sources */,
 				D14BE43F068C04F32480CF44 /* InputSynthesizer.swift in Sources */,
 				7F0A63038071E46294464838 /* MappingEngine.swift in Sources */,
@@ -110,6 +113,7 @@
 				AE3337ABF309F2F80B31B237 /* ActionEditor.swift */,
 				54628DF94BA9B9CD246EDB2A /* AppModel.swift */,
 				E665FA2E22B110AA6A0F683F /* ControllerMonitor.swift */,
+				C0C0DE0000000000000000A1 /* ControlGlyph.swift */,
 				21A9DF5692AD08E355284431 /* EditorView.swift */,
 				064B99491DED757747164F8A /* GamepadKeymapperApp.swift */,
 				E554962E01E664B1F7F7A2A8 /* InputSynthesizer.swift */,

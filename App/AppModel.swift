@@ -335,6 +335,18 @@ final class AppModel: ObservableObject {
         captureBindingID = nil
     }
 
+    /// Sets the action for a control, creating the binding the first time it is mapped.
+    func setActionForButton(profileID: UUID, layerID: UUID, button: ControllerButton, action: MapperAction) {
+        update(profileID) { profile in
+            guard let layerIndex = profile.layers.firstIndex(where: { $0.id == layerID }) else { return }
+            if let bindingIndex = profile.layers[layerIndex].bindings.firstIndex(where: { $0.button.id == button.id }) {
+                profile.layers[layerIndex].bindings[bindingIndex].action = action
+            } else if profile.layers[layerIndex].bindings.count < ProfileSanitizer.maxBindings {
+                profile.layers[layerIndex].bindings.append(ButtonBinding(button: button, action: action))
+            }
+        }
+    }
+
     func setAction(profileID: UUID, layerID: UUID, bindingID: UUID, action: MapperAction) {
         update(profileID) { profile in
             guard let layerIndex = profile.layers.firstIndex(where: { $0.id == layerID }),
