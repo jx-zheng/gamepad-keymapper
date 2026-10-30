@@ -533,6 +533,55 @@ final class MappingTests: XCTestCase {
         XCTAssertEqual(delta?.dy ?? -1, 0, accuracy: 0.0001)
     }
 
+    func testCaptureCommitsDuringDebounceLockout() {
+        let profile = Profile.starter(name: "S", isDefault: true)
+        var interpreter = MappingInterpreter(debounce: 0.05)
+        _ = interpreter.ingestButton(controller: "c", category: nil, button: .x, rawPressed: true, time: 0, profile: profile)
+        _ = interpreter.ingestButton(controller: "c", category: nil, button: .x, rawPressed: false, time: 0.001, profile: profile)
+        interpreter.captureNextPress = true
+        XCTAssertEqual(
+            interpreter.ingestButton(controller: "c", category: nil, button: .x, rawPressed: true, time: 0.002, profile: profile),
+            [.captured(.x)]
+        )
+        XCTAssertFalse(interpreter.captureNextPress)
+        let later = interpreter.poll(time: 0.2, profile: profile)
+        XCTAssertFalse(later.contains(.captured(.x)))
+    }
+
+    func testJoyConStickDeflectionCapturesTheDpadWhileListening() {
+        let profile = Profile.blank(name: "Blank", isDefault: true)
+        var interpreter = MappingInterpreter(debounce: 0, stickDeadzone: 0.2)
+        interpreter.captureNextPress = true
+        XCTAssertEqual(
+            interpreter.ingestStick(
+                controller: "c", category: "Joy-Con (R)", side: .left, x: 0, y: 1, time: 0, profile: profile, directsDpad: true
+            ),
+            [.captured(.dpadUp)]
+        )
+        XCTAssertFalse(interpreter.captureNextPress)
+        let right = interpreter.ingestStick(
+            controller: "c", category: "Joy-Con (R)", side: .left, x: 1, y: 0, time: 0.1, profile: profile, directsDpad: true
+        )
+        XCTAssertFalse(right.contains(.captured(.dpadRight)))
+    }
+
+    func testRestingOrPointerStickDoesNotEndListen() {
+        var profile = Profile.blank(name: "Blank", isDefault: true)
+        profile.sticks.left = .mouse(sensitivity: 1000)
+        var interpreter = MappingInterpreter(debounce: 0)
+        interpreter.captureNextPress = true
+        let nudge = interpreter.ingestStick(
+            controller: "c", category: nil, side: .left, x: 0.2, y: 0.15, time: 0, profile: profile, directsDpad: true
+        )
+        XCTAssertFalse(nudge.contains(.captured(.dpadUp)))
+        XCTAssertTrue(interpreter.captureNextPress)
+        let pro = interpreter.ingestStick(
+            controller: "c", category: nil, side: .left, x: 0, y: 1, time: 0.1, profile: profile, directsDpad: false
+        )
+        XCTAssertFalse(pro.contains(.captured(.dpadUp)))
+        XCTAssertTrue(interpreter.captureNextPress)
+    }
+
     func testCaptureConsumesOnePress() {
         let profile = Profile.starter(name: "S", isDefault: true)
         var interpreter = MappingInterpreter(debounce: 0)

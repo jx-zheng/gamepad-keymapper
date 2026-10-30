@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 enum EditorMetrics {
@@ -227,6 +228,11 @@ private struct ProfileEditor: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .onChange(of: model.editorTab) { _, tab in
+            if tab != .bindings, model.captureBindingID != nil {
+                model.disarmCapture()
+            }
+        }
         .alert("Delete “\(profile?.name ?? "this profile")”?", isPresented: $confirmProfileDelete) {
             Button("Cancel", role: .cancel) {}
             Button("Delete", role: .destructive) {
@@ -355,6 +361,20 @@ private struct BindingsTab: View {
         .onChange(of: selectedButtonID) { _, _ in
             unmappedDraft = .keyboard(.tap("space"))
         }
+        .onChange(of: model.captureBindingID) { previous, current in
+            guard let previous, current == nil else { return }
+            guard let binding = model.document.profiles
+                .first(where: { $0.id == profile.id })?
+                .layers
+                .first(where: { $0.id == (model.editingLayerID ?? profile.layers.first?.id) })?
+                .bindings
+                .first(where: { $0.id == previous })
+            else { return }
+            selectedButtonID = binding.button.id
+        }
+        .background(CaptureEscapeMonitor(active: model.captureBindingID != nil) {
+            model.disarmCapture()
+        })
         .alert("Delete “\(layer?.name ?? "this layer")”?", isPresented: $confirmLayerDelete) {
             Button("Cancel", role: .cancel) {}
             Button("Delete", role: .destructive) {
@@ -473,7 +493,7 @@ private struct BindingsTab: View {
                 .layoutPriority(1)
             Spacer(minLength: 8)
             if listening {
-                Text("Press a button…")
+                Text("Press a controller button…")
                     .font(.caption)
                     .foregroundStyle(Color.accentColor)
                     .lineLimit(1)
@@ -583,13 +603,27 @@ private struct BindingsTab: View {
                 Text(item.displayName).tag(item.id)
             }
         }
+        .id(binding.button.id)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func captureButton(_ binding: ButtonBinding, layer: Layer) -> some View {
-        Button(model.captureBindingID == binding.id ? "Listening…" : "Capture") {
-            model.editingLayerID = layer.id
-            model.beginCapture(bindingID: binding.id)
+        let listening = model.captureBindingID == binding.id
+        return VStack(alignment: .leading, spacing: 4) {
+            Button(listening ? "Stop listening" : "Listen") {
+                model.editingLayerID = layer.id
+                if listening {
+                    model.disarmCapture()
+                } else {
+                    model.beginCapture(bindingID: binding.id)
+                }
+            }
+            if listening {
+                Text("Press a controller button… Esc to cancel")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 
@@ -1336,5 +1370,56 @@ private struct PermissionsView: View {
         }
         .formStyle(.grouped)
         .onAppear { model.syncLaunchAtLogin() }
+    }
+}
+
+/// Esc leaves controller listen. A modal alert keeps Esc so Delete confirmation can still cancel.
+private struct CaptureEscapeMonitor: NSViewRepresentable {
+    var active: Bool
+    var onEscape: () -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(active: active, onEscape: onEscape)
+    }
+
+    func makeNSView(context: Context) -> NSView {
+        context.coordinator.install()
+        return NSView()
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        context.coordinator.active = active
+        context.coordinator.onEscape = onEscape
+    }
+
+    static func dismantleNSView(_ nsView: NSView, coordinator: Coordinator) {
+        coordinator.remove()
+    }
+
+    final class Coordinator {
+        var active: Bool
+        var onEscape: () -> Void
+        private var monitor: Any?
+
+        init(active: Bool, onEscape: @escaping () -> Void) {
+            self.active = active
+            self.onEscape = onEscape
+        }
+
+        func install() {
+            guard monitor == nil else { return }
+            monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+                guard let self, self.active, event.keyCode == 53, NSApp.modalWindow == nil else { return event }
+                self.onEscape()
+                return nil
+            }
+        }
+
+        func remove() {
+            if let monitor {
+                NSEvent.removeMonitor(monitor)
+            }
+            monitor = nil
+        }
     }
 }

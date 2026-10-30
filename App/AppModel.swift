@@ -374,6 +374,7 @@ final class AppModel: ObservableObject {
             profile.layers[layerIndex].bindings[bindingIndex].button = button
         }
         captureBindingID = nil
+        engine.disarmCapture()
     }
 
     /// Sets the action for a control, creating the binding the first time it is mapped.

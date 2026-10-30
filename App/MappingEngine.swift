@@ -132,14 +132,23 @@ final class MappingEngine {
     }
 
     func armCapture() {
-        queue.async {
+        onMapperQueue {
             self.interpreter.captureNextPress = true
         }
     }
 
     func disarmCapture() {
-        queue.async {
+        onMapperQueue {
             self.interpreter.captureNextPress = false
+        }
+    }
+
+    /// Sets the listen flag before returning so the next controller event cannot pass through first.
+    private func onMapperQueue(_ body: @escaping () -> Void) {
+        if DispatchQueue.getSpecific(key: Self.queueTokenKey) != nil {
+            body()
+        } else {
+            queue.sync(execute: body)
         }
     }
 

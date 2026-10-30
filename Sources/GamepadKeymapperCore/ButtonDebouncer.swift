@@ -28,6 +28,14 @@ struct ButtonDebouncer: Equatable {
         return commitIfUnlocked(time: time)
     }
 
+    /// Treats `rawPressed` as already committed so a listen press is not emitted again when the lockout ends.
+    mutating func noteCommitted(rawPressed: Bool, time: TimeInterval) {
+        hasSample = true
+        raw = rawPressed
+        committed = rawPressed
+        lockedUntil = time + interval
+    }
+
     /// Commits a raw state that changed during the lockout, once the window has elapsed.
     /// The app schedules a single timer for `wakeTime()` instead of polling.
     mutating func poll(time: TimeInterval) -> Bool? {

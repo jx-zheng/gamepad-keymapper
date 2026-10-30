@@ -5,9 +5,15 @@ import SwiftUI
 struct GamepadKeymapperApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var model = AppModel()
+    /// Loads the shared glyph before the status item so template rendering sticks.
+    private let menuBarTemplate: Void = {
+        if let image = NSImage(named: "MenuBarIcon") {
+            image.isTemplate = true
+        }
+    }()
 
     var body: some Scene {
-        MenuBarExtra("Gamepad Keymapper", systemImage: "gamecontroller.fill") {
+        MenuBarExtra("Gamepad Keymapper", image: "MenuBarIcon") {
             MenuBarContent()
                 .environmentObject(model)
         }

@@ -154,7 +154,7 @@ struct ActionEditor: View {
                 onChange(.keyboard(copy))
             }
             .disabled(command.steps.count >= 8)
-            Text("Click the key field, then press a key. It only listens in this window.")
+            Text("Click the key field, then press a key. That sets the keyboard key, not the controller button.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }

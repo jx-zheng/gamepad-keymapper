@@ -104,6 +104,20 @@ struct MappingInterpreter {
         let key = DebouncerKey(controller: controller, button: button.id)
         var debouncer = debouncers[key] ?? ButtonDebouncer(interval: debounce)
         debouncer.interval = debounce
+        // Listen mode must take the first real press even if it lands inside the chatter window.
+        // Leaving it for the debounce timer made the editor stay on “Listening…”.
+        if rawPressed && captureNextPress {
+            debouncer.noteCommitted(rawPressed: true, time: time)
+            debouncers[key] = debouncer
+            return apply(
+                controller: controller,
+                category: nil,
+                button: button,
+                pressed: true,
+                time: time,
+                profile: profile
+            )
+        }
         let edge = debouncer.ingest(rawPressed: rawPressed, time: time)
         debouncers[key] = debouncer
         guard let pressed = edge else { return [] }
@@ -169,6 +183,13 @@ struct MappingInterpreter {
     ) -> [EngineEffect] {
         let x = min(1, max(-1, x))
         let y = min(1, max(-1, y))
+
+        // A lone Joy-Con’s stick is the d-pad and often has no separate hat buttons.
+        // A firm push in that mode is the control the editor is waiting for.
+        if captureNextPress, directsDpad, let button = Self.dpadForStick(x: x, y: y) {
+            captureNextPress = false
+            return [.captured(button)]
+        }
 
         if var session = radial,
            session.controller == controller,
@@ -316,6 +337,17 @@ struct MappingInterpreter {
         lastStickSample[key] = time
         guard let previous else { return 0 }
         return min(0.05, max(0, time - previous))
+    }
+
+    /// Dominant cardinal of a firm stick push. Nil inside the listen deadzone so a resting stick does not assign itself.
+    static func dpadForStick(x: Double, y: Double) -> ControllerButton? {
+        let ax = abs(x)
+        let ay = abs(y)
+        guard max(ax, ay) >= 0.7 else { return nil }
+        if ay >= ax {
+            return y >= 0 ? .dpadUp : .dpadDown
+        }
+        return x >= 0 ? .dpadRight : .dpadLeft
     }
 
     private func aimingStick(_ source: RadialSelectionSource) -> StickSide? {
