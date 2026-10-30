@@ -55,7 +55,7 @@ bash Scripts/security-scan.sh
 
 ## Permissions
 
-macOS requires Accessibility before a process can create keyboard and mouse events. Gamepad Keymapper uses that permission only to post the actions you configured. It does not install an event tap and it does not read what you type.
+macOS requires Accessibility before a process can create keyboard and mouse events. Gamepad Keymapper uses that permission only to post the actions you configured. It does not install an event tap and it does not read what you type. The radial menu is drawn by the app and can open without Accessibility. Keys, clicks, and pointer moves cannot. The editor shows a banner, and the menu bar names the last button received, so a press that does nothing is not a missing controller.
 
 Shortcuts and app launch work without Accessibility. Keyboard, mouse, scroll, text, and media keys do not.
 

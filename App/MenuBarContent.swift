@@ -22,8 +22,15 @@ struct MenuBarContent: View {
             Text("Automatic")
         }
         if !model.accessibilityTrusted {
-            Button("Grant Accessibility…") {
+            Text(model.controllers.isEmpty
+                 ? "Accessibility is off. Keys and mouse from a controller will not be sent."
+                 : "Controller connected. Accessibility is off, so keys and clicks are blocked.")
+            if let last = model.lastInputName {
+                Text("Last press: \(last)")
+            }
+            Button("Open Accessibility Settings") {
                 model.openAccessibilitySettings()
+                model.showEditor()
             }
         }
         Divider()

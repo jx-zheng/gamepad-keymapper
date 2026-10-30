@@ -31,6 +31,8 @@ final class AppModel: ObservableObject {
     @Published var activeProfileID: UUID?
     @Published var accessibilityTrusted = false
     @Published var statusMessage: String?
+    /// Last controller button that went down, whether or not macOS allowed the injected event.
+    @Published var lastInputName: String?
     @Published var alertMessage: String?
     @Published var sidebar: SidebarItem
     @Published var editorTab: EditorTab = .bindings
@@ -183,10 +185,24 @@ final class AppModel: ObservableObject {
     }
 
     func finishOnboarding() {
+        refreshAccessibility(prompt: false)
+        guard accessibilityTrusted else {
+            openAccessibilitySettings()
+            return
+        }
         settings.didFinishOnboarding = true
         schedulePersist()
         if case .permissions = sidebar, let id = document.profiles.first?.id {
             sidebar = .profile(id)
+        }
+    }
+
+    /// A mapped key or click was blocked. Re-open the editor so the Accessibility banner is visible.
+    func noteInjectionBlocked() {
+        refreshAccessibility(prompt: false)
+        guard !accessibilityTrusted else { return }
+        if !EditorWindow.isOpen {
+            showEditor()
         }
     }
 
@@ -489,13 +505,29 @@ final class AppModel: ObservableObject {
 
     private func wireEngine() {
         engine.onControllers = { [weak self] snapshots in
-            Task { @MainActor in self?.controllers = snapshots }
+            Task { @MainActor in
+                guard let self else { return }
+                let gainedController = self.controllers.isEmpty && !snapshots.isEmpty
+                self.controllers = snapshots
+                if gainedController && !self.accessibilityTrusted {
+                    self.refreshAccessibility(prompt: false)
+                    if !self.accessibilityTrusted {
+                        self.showEditor()
+                    }
+                }
+            }
         }
         engine.onCapture = { [weak self] button in
             Task { @MainActor in self?.applyCapture(button) }
         }
         engine.onStatus = { [weak self] message in
             Task { @MainActor in self?.statusMessage = message }
+        }
+        engine.onInput = { [weak self] name in
+            Task { @MainActor in self?.lastInputName = name }
+        }
+        engine.onInjectionBlocked = { [weak self] in
+            Task { @MainActor in self?.noteInjectionBlocked() }
         }
     }
 

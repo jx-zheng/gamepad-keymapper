@@ -79,7 +79,7 @@ struct RadialMenuView: View {
             if let menu = model.menu {
                 let count = max(menu.items.count, 1)
                 ForEach(Array(menu.items.enumerated()), id: \.element.id) { index, item in
-                    let theta = (Double.pi / 2) - (Double(index) * (2 * Double.pi / Double(count)))
+                    let center = RadialGeometry.sliceCenter(index: index, count: count)
                     let selected = model.selection == index
                     Text(item.label)
                         .font(.system(size: 13, weight: selected ? .semibold : .regular))
@@ -88,7 +88,7 @@ struct RadialMenuView: View {
                         .padding(.vertical, 6)
                         .background(selected ? Color.accentColor.opacity(0.9) : Color.black.opacity(0.08), in: Capsule())
                         .foregroundStyle(selected ? Color.white : Color.primary)
-                        .offset(x: cos(theta) * 132, y: sin(theta) * 132)
+                        .offset(x: center.x * 132, y: -center.y * 132)
                 }
             }
             VStack(spacing: 2) {

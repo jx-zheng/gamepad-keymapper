@@ -16,10 +16,36 @@ struct EditorView: View {
     var body: some View {
         editor
             .safeAreaInset(edge: .top, spacing: 0) {
-                if model.savesDisabled {
-                    unsavedBanner
+                VStack(spacing: 0) {
+                    if !model.accessibilityTrusted {
+                        accessibilityBanner
+                    }
+                    if model.savesDisabled {
+                        unsavedBanner
+                    }
                 }
             }
+    }
+
+    private var accessibilityBanner: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "exclamationmark.circle.fill")
+                .foregroundStyle(.yellow)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Accessibility is off. Gamepad Keymapper can see the controller, but macOS will not send keystrokes or mouse actions until you allow it in Privacy & Security → Accessibility. The radial menu can still open.")
+                    .font(.callout)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let last = model.lastInputName {
+                    Text("Last press: \(last) — received from the controller, not sent.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Spacer(minLength: 8)
+            Button("Open System Settings") { model.openAccessibilitySettings() }
+        }
+        .padding(12)
+        .background(Color.yellow.opacity(0.16))
     }
 
     private var unsavedBanner: some View {
@@ -916,7 +942,7 @@ private struct RadialTab: View {
                         Text(source.displayName).tag(source)
                     }
                 }
-                Text("Hold the trigger, aim, then release. Press B to cancel.")
+                Text("Hold the trigger, aim, then release. Press B to cancel. D-Pad uses the hat. On a single Joy-Con that hat is the stick, so the stick aims too.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -926,46 +952,63 @@ private struct RadialTab: View {
                         .foregroundStyle(.secondary)
                 }
                 ForEach(menu.items) { item in
-                    DisclosureGroup(isExpanded: sliceExpanded(item.id)) {
-                        TextField("Label", text: Binding(
-                            get: { item.label },
-                            set: { label in
-                                updateMenu(menu.id) { menu in
-                                    guard let index = menu.items.firstIndex(where: { $0.id == item.id }) else { return }
-                                    menu.items[index].label = label
-                                }
-                            }
-                        ))
-                        ActionEditor(
-                            action: item.action,
-                            shortcutNames: model.shortcutNames,
-                            onChange: { action in
-                                updateMenu(menu.id) { menu in
-                                    guard let index = menu.items.firstIndex(where: { $0.id == item.id }) else { return }
-                                    menu.items[index].action = action
-                                }
-                            },
-                            onTest: { model.test(action: item.action) },
-                            onRefreshShortcuts: { model.refreshShortcuts() }
-                        )
-                        .padding(.top, 4)
-                        Button("Remove Slice", role: .destructive) {
-                            updateMenu(menu.id) { menu in
-                                menu.items.removeAll { $0.id == item.id }
-                            }
-                            if expandedSlice == item.id {
-                                expandedSlice = nil
-                            }
-                        }
+                    let expanded = expandedSlice == item.id
+                    Button {
+                        expandedSlice = expanded ? nil : item.id
                     } label: {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(item.label.isEmpty ? "Untitled" : item.label)
-                            Text(item.action.summary)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
+                        HStack(alignment: .center, spacing: 10) {
+                            Image(systemName: expanded ? "chevron.down" : "chevron.right")
+                                .font(.body.weight(.semibold))
+                                .frame(width: 18)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(item.label.isEmpty ? "Untitled" : item.label)
+                                Text(item.action.summary)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                            }
+                            Spacer(minLength: 0)
                         }
-                        .padding(.vertical, 2)
+                        .padding(.vertical, 12)
+                        .padding(.horizontal, 4)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    if expanded {
+                        VStack(alignment: .leading, spacing: 8) {
+                            TextField("Label", text: Binding(
+                                get: { item.label },
+                                set: { label in
+                                    updateMenu(menu.id) { menu in
+                                        guard let index = menu.items.firstIndex(where: { $0.id == item.id }) else { return }
+                                        menu.items[index].label = label
+                                    }
+                                }
+                            ))
+                            ActionEditor(
+                                action: item.action,
+                                shortcutNames: model.shortcutNames,
+                                onChange: { action in
+                                    updateMenu(menu.id) { menu in
+                                        guard let index = menu.items.firstIndex(where: { $0.id == item.id }) else { return }
+                                        menu.items[index].action = action
+                                    }
+                                },
+                                onTest: { model.test(action: item.action) },
+                                onRefreshShortcuts: { model.refreshShortcuts() }
+                            )
+                            Button("Remove Slice", role: .destructive) {
+                                updateMenu(menu.id) { menu in
+                                    menu.items.removeAll { $0.id == item.id }
+                                }
+                                if expandedSlice == item.id {
+                                    expandedSlice = nil
+                                }
+                            }
+                        }
+                        .padding(.leading, 28)
+                        .padding(.bottom, 8)
                     }
                 }
                 Button("Add Slice") {
@@ -1065,32 +1108,69 @@ private struct DevicesView: View {
                 description: Text("Pair a Joy-Con, Switch Pro Controller, DualSense, DualShock, or Xbox pad in System Settings, then press a button.")
             )
         } else {
-            List(model.controllers) { controller in
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack {
-                        Text(controller.name).font(.headline)
-                        Spacer()
-                        if let battery = controller.battery {
-                            Text(battery).foregroundStyle(.secondary)
-                        }
-                    }
-                    Text(controller.category).font(.subheadline).foregroundStyle(.secondary)
-                    Text(controller.hasMotion ? "Motion: available" : "Motion: not reported by macOS")
-                        .font(.caption)
-                    if !controller.pressed.isEmpty {
-                        Text("Held: \(controller.pressed.joined(separator: ", "))")
-                            .font(.caption)
-                    }
-                    if !controller.elementNames.isEmpty {
-                        Text(controller.elementNames.joined(separator: ", "))
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
-                            .textSelection(.enabled)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    Text(model.lastInputName.map { "Last press: \($0)" } ?? "Last press: none yet")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                    ForEach(model.controllers) { controller in
+                        deviceCard(controller)
                     }
                 }
-                .padding(.vertical, 4)
+                .padding(20)
+                .frame(maxWidth: 720, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
+    }
+
+    private func deviceCard(_ controller: ControllerSnapshot) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(controller.name)
+                        .font(.headline)
+                    Text(controller.category)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 12)
+                Label(batteryLabel(controller.battery), systemImage: "battery.100")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .labelStyle(.titleAndIcon)
+            }
+            Text(controller.hasMotion ? "Motion: available" : "Motion: not reported by macOS")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            if !controller.pressed.isEmpty {
+                Text("Held: \(controller.pressed.joined(separator: ", "))")
+                    .font(.caption)
+            }
+            if !controller.elementNames.isEmpty {
+                Text("Inputs")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 128), spacing: 8, alignment: .leading)], alignment: .leading, spacing: 8) {
+                    ForEach(controller.elementNames, id: \.self) { name in
+                        Text(name)
+                            .font(.caption)
+                            .lineLimit(1)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 5)
+                            .background(Color.primary.opacity(0.06), in: Capsule())
+                    }
+                }
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    private func batteryLabel(_ value: String?) -> String {
+        guard let value, !value.isEmpty, value != "0%" else { return "Battery —" }
+        return "Battery \(value)"
     }
 }
 

@@ -210,6 +210,14 @@ final class ProfileTests: XCTestCase {
         XCTAssertNil(RadialGeometry.sliceIndex(dx: 0.1, dy: 0, count: 4, deadzone: 0.2))
         XCTAssertEqual(RadialGeometry.index(for: .up, count: 8), 0)
         XCTAssertEqual(RadialGeometry.index(for: .right, count: 8), 2)
+        let up = RadialGeometry.sliceCenter(index: 0, count: 4)
+        XCTAssertEqual(up.x, 0, accuracy: 0.001)
+        XCTAssertEqual(up.y, 1, accuracy: 0.001)
+        let right = RadialGeometry.sliceCenter(index: 1, count: 4)
+        XCTAssertEqual(right.x, 1, accuracy: 0.001)
+        XCTAssertEqual(right.y, 0, accuracy: 0.001)
+        let down = RadialGeometry.sliceCenter(index: 2, count: 4)
+        XCTAssertEqual(down.y, -1, accuracy: 0.001)
     }
 
     private func repoRoot() -> URL {

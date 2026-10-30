@@ -3,10 +3,14 @@ import ApplicationServices
 import Foundation
 
 enum AccessibilityPermission {
+    /// Both checks are required. The radial menu is in-app and works without them;
+    /// keyboard and mouse actions are posted with CGEvent and are dropped otherwise.
     static func isTrusted(prompt: Bool) -> Bool {
         let key = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
         let options = [key: prompt] as CFDictionary
-        return AXIsProcessTrustedWithOptions(options)
+        let trusted = AXIsProcessTrustedWithOptions(options)
+        let canPost = CGPreflightPostEventAccess()
+        return trusted && canPost
     }
 
     static func openSettings() {

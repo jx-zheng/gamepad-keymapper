@@ -164,7 +164,8 @@ struct MappingInterpreter {
         x: Double,
         y: Double,
         time: TimeInterval,
-        profile: Profile
+        profile: Profile,
+        directsDpad: Bool = false
     ) -> [EngineEffect] {
         let x = min(1, max(-1, x))
         let y = min(1, max(-1, y))
@@ -172,7 +173,7 @@ struct MappingInterpreter {
         if var session = radial,
            session.controller == controller,
            let menu = profile.radialMenus.first(where: { $0.id == session.menuID }),
-           menu.selection.matches(side: side) {
+           menu.selection.matches(side: side) || (menu.selection == .dpad && directsDpad) {
             var effects: [EngineEffect] = []
             let index = RadialGeometry.sliceIndex(dx: x, dy: y, count: menu.items.count, deadzone: stickDeadzone)
             if index != session.selection {

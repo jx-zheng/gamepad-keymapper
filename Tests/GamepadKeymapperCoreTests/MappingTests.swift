@@ -364,6 +364,35 @@ final class MappingTests: XCTestCase {
         )
     }
 
+    func testJoyConStickAimsADpadRadial() {
+        var profile = Profile.starter(name: "Radial", isDefault: true)
+        profile.radialMenus = [RadialMenu(
+            name: "Apps",
+            trigger: .menu,
+            selection: .dpad,
+            items: [
+                RadialItem(label: "Up", action: .media(.mute)),
+                RadialItem(label: "Right", action: .media(.nextTrack)),
+                RadialItem(label: "Down", action: .media(.previousTrack)),
+                RadialItem(label: "Left", action: .media(.playPause))
+            ]
+        )]
+        var interpreter = MappingInterpreter(debounce: 0, stickDeadzone: 0.2)
+        _ = interpreter.ingestButton(controller: "c", category: nil, button: .menu, rawPressed: true, time: 0, profile: profile)
+        let up = interpreter.ingestStick(
+            controller: "c", category: nil, side: .left, x: 0, y: 1, time: 0.1, profile: profile, directsDpad: true
+        )
+        XCTAssertTrue(up.contains(.updateRadial(0)))
+        let right = interpreter.ingestStick(
+            controller: "c", category: nil, side: .left, x: 1, y: 0, time: 0.2, profile: profile, directsDpad: true
+        )
+        XCTAssertTrue(right.contains(.updateRadial(1)))
+        let ignored = interpreter.ingestStick(
+            controller: "c", category: nil, side: .left, x: 0, y: 1, time: 0.3, profile: profile, directsDpad: false
+        )
+        XCTAssertFalse(ignored.contains(.updateRadial(0)))
+    }
+
     func testRadialStickDoesNotAlsoMoveThePointer() {
         var profile = Profile.starter(name: "Radial", isDefault: true)
         profile.sticks.left = .mouse(sensitivity: 2_000)

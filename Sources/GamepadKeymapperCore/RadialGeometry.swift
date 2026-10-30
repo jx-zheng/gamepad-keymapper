@@ -24,6 +24,14 @@ enum RadialGeometry {
         return index(forAngle: angle, count: count)
     }
 
+    /// Center of a slice on a unit ring. `x` is positive right and `y` is positive up.
+    /// SwiftUI’s y axis points down, so a view should offset by `(x, -y)`.
+    static func sliceCenter(index: Int, count: Int) -> (x: Double, y: Double) {
+        guard count > 0 else { return (0, 0) }
+        let theta = (Double.pi / 2) - (Double(index) * (2 * Double.pi / Double(count)))
+        return (cos(theta), sin(theta))
+    }
+
     static func index(forAngle angle: Double, count: Int) -> Int {
         guard count > 0 else { return 0 }
         let slice = (2 * .pi) / Double(count)

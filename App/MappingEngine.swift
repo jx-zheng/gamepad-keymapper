@@ -11,6 +11,9 @@ final class MappingEngine {
     var onControllers: (([ControllerSnapshot]) -> Void)?
     var onCapture: ((ControllerButton) -> Void)?
     var onStatus: ((String) -> Void)?
+    /// A controller button went down. This fires even when Accessibility blocks the injected event.
+    var onInput: ((String) -> Void)?
+    var onInjectionBlocked: (() -> Void)?
 
     private let queue = DispatchQueue(label: "app.gamepadkeymapper.mapper", qos: .userInteractive)
     private static let queueTokenKey = DispatchSpecificKey<UInt8>()
@@ -171,6 +174,9 @@ final class MappingEngine {
         guard let profile else { return }
         var effects: [EngineEffect] = []
         for edge in batch.edges {
+            if edge.pressed {
+                noteInput(edge.button.displayName)
+            }
             effects += interpreter.ingestButton(
                 controller: edge.sessionID,
                 category: edge.category,
@@ -188,7 +194,8 @@ final class MappingEngine {
                 x: stick.x,
                 y: stick.y,
                 time: stick.time,
-                profile: profile
+                profile: profile,
+                directsDpad: stick.directsDpad
             )
         }
         if mappingEnabled, profile.gyro.enabled {
@@ -277,6 +284,9 @@ final class MappingEngine {
         default:
             guard ensureTrusted() else {
                 report("Turn on Accessibility to send keys and pointer actions.")
+                DispatchQueue.main.async { [weak self] in
+                    self?.onInjectionBlocked?()
+                }
                 return
             }
             synthesizer.begin(action)
@@ -290,6 +300,12 @@ final class MappingEngine {
             trusted = AccessibilityPermission.isTrusted(prompt: false)
         }
         return trusted
+    }
+
+    private func noteInput(_ name: String) {
+        DispatchQueue.main.async { [weak self] in
+            self?.onInput?(name)
+        }
     }
 
     private func report(_ message: String) {

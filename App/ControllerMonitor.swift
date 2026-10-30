@@ -28,6 +28,8 @@ struct InputBatch {
         var x: Double
         var y: Double
         var time: TimeInterval
+        /// This stick is the controller’s only direction pad, as on a single Joy-Con.
+        var directsDpad: Bool = false
     }
 
     struct Motion {
@@ -249,7 +251,7 @@ private final class ControllerSession {
     let sessionID: String
     let category: String
     let displayName: String
-    let elementNames: [String]
+    var elementNames: [String]
     let controller: GCController
     private weak var owner: ControllerMonitor?
     private var buttons: [GCControllerButtonInput] = []
@@ -292,10 +294,12 @@ private final class ControllerSession {
         var left = profile.dpads[GCInputLeftThumbstick] ?? extended?.leftThumbstick
         let right = profile.dpads[GCInputRightThumbstick] ?? extended?.rightThumbstick
         var hat = profile.dpads[GCInputDirectionPad] ?? extended?.dpad
+        var leftDirectsDpad = false
 
         // A lone Joy-Con often exposes its stick as the micro gamepad d-pad and nothing else.
         if left == nil, let microPad = micro?.dpad {
             left = microPad
+            leftDirectsDpad = true
             if hat === microPad {
                 hat = nil
             }
@@ -311,8 +315,9 @@ private final class ControllerSession {
             bind(micro.buttonX, to: .x)
         }
 
-        watchStick(left, side: .left)
-        watchStick(right, side: .right)
+        watchStick(left, side: .left, directsDpad: leftDirectsDpad)
+        watchStick(right, side: .right, directsDpad: false)
+        elementNames = bound.sorted().map { ControllerButton(id: $0).displayName }
         schedulePropertyRefresh()
     }
 
@@ -406,7 +411,7 @@ private final class ControllerSession {
         }
     }
 
-    private func watchStick(_ pad: GCControllerDirectionPad?, side: StickSide) {
+    private func watchStick(_ pad: GCControllerDirectionPad?, side: StickSide, directsDpad: Bool) {
         guard let pad else { return }
         dpads.append(pad)
         pad.valueChangedHandler = { [weak self] pad, x, y in
@@ -417,7 +422,8 @@ private final class ControllerSession {
                 side: side,
                 x: Double(x),
                 y: Double(y),
-                time: CACurrentMediaTime()
+                time: CACurrentMediaTime(),
+                directsDpad: directsDpad
             ))
         }
     }
@@ -443,7 +449,10 @@ private final class ControllerSession {
         guard let battery else { return nil }
         switch battery.batteryState {
         case .charging, .discharging, .full:
-            let percent = Int((battery.batteryLevel * 100).rounded())
+            let level = battery.batteryLevel
+            // A lone Joy-Con often reports level 0 while the charge is simply unknown.
+            guard level.isFinite, level > 0, level <= 1 else { return nil }
+            let percent = Int((level * 100).rounded())
             return "\(percent)%"
         default:
             return nil
@@ -467,7 +476,19 @@ private final class ControllerSession {
         case String(GCInputButtonHome): return .home
         case String(GCInputDualShockTouchpadButton): return .touchpad
         default:
-            return ControllerButton.namedGCElement(name)
+            return Self.directionPadButton(name) ?? ControllerButton.namedGCElement(name)
         }
+    }
+
+    /// Joy-Con and some other pads name the hat buttons “Direction Pad Up” instead of a standard id.
+    private static func directionPadButton(_ name: String) -> ControllerButton? {
+        let normalized = name.lowercased()
+        guard normalized.contains("direction pad") || normalized.contains("dpad") else { return nil }
+        if normalized.contains("up") { return .dpadUp }
+        if normalized.contains("down") { return .dpadDown }
+        if normalized.contains("left") { return .dpadLeft }
+        if normalized.contains("right") { return .dpadRight }
+        return nil
+    }
     }
 }
