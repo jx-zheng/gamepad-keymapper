@@ -4,9 +4,9 @@ import QuartzCore
 
 /// Runs mapping off the main thread.
 ///
-/// Controller callbacks are coalesced onto `queue`. A debounce timer exists only while an edge
-/// is waiting, and a pointer timer exists only while a button is holding a mouse-move action.
-/// Nothing is scheduled while the app is idle.
+/// Controller callbacks are coalesced onto `queue`. A debounce timer exists only while a
+/// release is waiting out the chatter window, and a pointer timer exists only while a button
+/// is holding a mouse-move action. Nothing is scheduled while the app is idle.
 final class MappingEngine {
     var onControllers: (([ControllerSnapshot]) -> Void)?
     var onCapture: ((ControllerButton) -> Void)?
@@ -29,6 +29,9 @@ final class MappingEngine {
     private var lastStatus = ""
     private var lastStatusTime = 0.0
     private var lastMotionTime: [String: TimeInterval] = [:]
+    private var motionHoldGeneration: UInt64 = 0
+    private var motionProfileID: UUID?
+    private var motionEnabled = false
     private let radial = RadialOverlay()
 
     init() {
@@ -92,9 +95,8 @@ final class MappingEngine {
             self.profile = profile
             if changed {
                 self.perform(self.interpreter.endSustainedActions())
-            } else {
-                self.refreshMotion()
             }
+            self.refreshMotion()
         }
     }
 
@@ -108,8 +110,8 @@ final class MappingEngine {
                 self.perform(self.interpreter.resetInteractions())
             } else {
                 self.mappingEnabled = enabled
-                self.refreshMotion()
             }
+            self.refreshMotion()
         }
     }
 
@@ -259,7 +261,7 @@ final class MappingEngine {
             }
         }
         armTimers()
-        refreshMotion()
+        refreshMotionIfNeeded()
     }
 
     private func dispatch(_ action: MapperAction) {
@@ -356,9 +358,21 @@ final class MappingEngine {
         timer.resume()
     }
 
+    private func refreshMotionIfNeeded() {
+        let enabled = mappingEnabled && (profile?.gyro.enabled ?? false)
+        guard interpreter.holdGeneration != motionHoldGeneration
+            || profile?.id != motionProfileID
+            || enabled != motionEnabled
+        else { return }
+        refreshMotion()
+    }
+
     private func refreshMotion() {
         let gyro = profile?.gyro
         let enabled = mappingEnabled && (gyro?.enabled ?? false)
+        motionHoldGeneration = interpreter.holdGeneration
+        motionProfileID = profile?.id
+        motionEnabled = enabled
         monitor.setMotionEnabled { [interpreter] sessionID in
             guard enabled, let gyro else { return false }
             return gyro.activation.isActive(held: interpreter.heldButtonIDs(controller: sessionID))

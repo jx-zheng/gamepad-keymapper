@@ -63,6 +63,9 @@ struct MappingInterpreter {
         held[controller, default: []]
     }
 
+    /// Bumps only when the set of held buttons changes. The engine uses it to skip gyro reinstalls.
+    private(set) var holdGeneration: UInt64 = 0
+
     /// True while a held button is a continuous pointer nudge. The app should pump `poll` only then.
     var needsPointerPump: Bool {
         openHolds.values.contains { action in
@@ -249,6 +252,9 @@ struct MappingInterpreter {
             radial = nil
             effects.append(.hideRadial)
         }
+        if let buttons = held[controller], !buttons.isEmpty {
+            holdGeneration &+= 1
+        }
         held[controller] = nil
         toggled[controller] = nil
         sticks[controller] = nil
@@ -290,6 +296,9 @@ struct MappingInterpreter {
         if radial != nil {
             radial = nil
             effects.append(.hideRadial)
+        }
+        if held.values.contains(where: { !$0.isEmpty }) {
+            holdGeneration &+= 1
         }
         held.removeAll()
         toggled.removeAll()
@@ -415,9 +424,11 @@ struct MappingInterpreter {
         profile: Profile
     ) -> [EngineEffect] {
         if pressed {
-            held[controller, default: []].insert(button.id)
-        } else {
-            held[controller, default: []].remove(button.id)
+            if held[controller, default: []].insert(button.id).inserted {
+                holdGeneration &+= 1
+            }
+        } else if held[controller]?.remove(button.id) != nil {
+            holdGeneration &+= 1
         }
 
         if pressed && captureNextPress {

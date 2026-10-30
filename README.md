@@ -42,6 +42,8 @@ xcodebuild -project GamepadKeymapper.xcodeproj -scheme GamepadKeymapper -destina
 
 That command needs macOS and Xcode. It cannot be run in a Linux environment. `CODE_SIGNING_ALLOWED=NO` is the CI override. A local Run from Xcode uses the ad-hoc signature. Accessibility permission is tied to that signature. An ad-hoc rebuild can change it, so macOS may ask you to grant Accessibility again.
 
+Release builds should enable the hardened runtime and sign with a Developer ID. Local runs stay ad-hoc so the project opens without a development team.
+
 Logic tests do not need a Mac:
 
 ```bash
@@ -102,7 +104,7 @@ A second profile, Xcode, activates when `com.apple.dt.Xcode` is frontmost (Run, 
 
 Controller callbacks are coalesced onto one queue. Stick and motion samples keep only the latest value, so a noisy gyro cannot grow a backlog. Button edges are capped. There is no timer while the app is idle.
 
-A debounce timer is armed only after an edge, and only until that edge is stable (15 ms by default). A pointer timer runs only while a button is holding a mouse-move action. Gyro callbacks are installed only while gyro is enabled and its activation button matches.
+A press commits immediately. Chatter inside the debounce window (15 ms by default) is ignored, and a timer runs only when a change arrived during that window and still needs to commit. A pointer timer runs only while a button is holding a mouse-move action. Gyro callbacks are installed only while gyro is enabled and its activation button matches, and only again when the held buttons, profile, or enabled state change.
 
 Switching profiles releases keys and mouse buttons that are still down. A button that is still physically held does not fire the new profile until you release it and press it again. Disconnecting a controller releases only that controller’s holds.
 

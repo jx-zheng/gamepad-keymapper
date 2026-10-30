@@ -2,14 +2,24 @@ import XCTest
 @testable import GamepadKeymapperCore
 
 final class MappingTests: XCTestCase {
-    func testDebounceIgnoresBounceUntilStable() {
+    func testDebounceCommitsLeadingEdgeAndIgnoresChatter() {
         var debouncer = ButtonDebouncer(interval: 0.015)
-        XCTAssertNil(debouncer.ingest(rawPressed: true, time: 0))
-        XCTAssertEqual(debouncer.wakeTime(), 0.015)
+        XCTAssertEqual(debouncer.ingest(rawPressed: true, time: 0), true)
+        XCTAssertNil(debouncer.wakeTime())
         XCTAssertNil(debouncer.ingest(rawPressed: false, time: 0.005))
+        XCTAssertEqual(debouncer.wakeTime(), 0.015)
         XCTAssertNil(debouncer.ingest(rawPressed: true, time: 0.010))
-        XCTAssertNil(debouncer.poll(time: 0.024))
-        XCTAssertEqual(debouncer.poll(time: 0.025), true)
+        XCTAssertNil(debouncer.wakeTime())
+        XCTAssertNil(debouncer.poll(time: 0.025))
+        XCTAssertEqual(debouncer.ingest(rawPressed: false, time: 0.040), false)
+    }
+
+    func testDebounceCommitsReleaseWhenTheWindowEnds() {
+        var debouncer = ButtonDebouncer(interval: 0.015)
+        XCTAssertEqual(debouncer.ingest(rawPressed: true, time: 0), true)
+        XCTAssertNil(debouncer.ingest(rawPressed: false, time: 0.004))
+        XCTAssertNil(debouncer.poll(time: 0.014))
+        XCTAssertEqual(debouncer.poll(time: 0.015), false)
         XCTAssertNil(debouncer.wakeTime())
     }
 
@@ -224,16 +234,21 @@ final class MappingTests: XCTestCase {
         )
     }
 
-    func testDebouncedPressWaitsForPoll() {
+    func testDebouncedPressFiresImmediately() {
         let profile = Profile.starter(name: "S", isDefault: true)
         var interpreter = MappingInterpreter(debounce: 0.02)
         XCTAssertEqual(
             interpreter.ingestButton(controller: "c", category: nil, button: .a, rawPressed: true, time: 1, profile: profile),
+            [.actionBegan(.mouseClick(.left, clicks: 1))]
+        )
+        XCTAssertNil(interpreter.nextWakeTime())
+        XCTAssertEqual(
+            interpreter.ingestButton(controller: "c", category: nil, button: .a, rawPressed: false, time: 1.005, profile: profile),
             []
         )
         XCTAssertEqual(interpreter.nextWakeTime(), 1.02)
-        let committed = interpreter.poll(time: 1.02, profile: profile)
-        XCTAssertEqual(committed, [.actionBegan(.mouseClick(.left, clicks: 1))])
+        let released = interpreter.poll(time: 1.02, profile: profile)
+        XCTAssertEqual(released, [.actionEnded(.mouseClick(.left, clicks: 1))])
         XCTAssertNil(interpreter.nextWakeTime())
     }
 

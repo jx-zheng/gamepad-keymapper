@@ -45,6 +45,9 @@ struct InputBatch {
 
 /// Listens to GameController callbacks and coalesces them onto one queue.
 ///
+/// Each pad gets its own serial handler queue. GameController does not deliver button,
+/// stick, or motion callbacks on the main thread, so an editor update cannot stall input.
+///
 /// Hardware callbacks are not polled. At most one drain block is queued, and stick/motion
 /// samples keep only the latest value so a noisy gyro cannot grow memory.
 final class ControllerMonitor: NSObject {
@@ -254,6 +257,8 @@ private final class ControllerSession {
     private var bound: Set<String> = []
     private var motionInstalled = false
     private let lock = NSLock()
+    /// Serial queue GameController uses for this pad. Never the main queue.
+    let handlerQueue: DispatchQueue
 
     init(controller: GCController, owner: ControllerMonitor) {
         self.controller = controller
@@ -271,6 +276,8 @@ private final class ControllerSession {
         sessionID = "\(category)#\(bits)"
         let profile = controller.physicalInputProfile
         elementNames = (Array(profile.buttons.keys) + Array(profile.dpads.keys)).sorted()
+        handlerQueue = DispatchQueue(label: "app.gamepadkeymapper.pad.\(sessionID)", qos: .userInteractive)
+        controller.handlerQueue = handlerQueue
     }
 
     func installHandlers() {
@@ -318,7 +325,7 @@ private final class ControllerSession {
         motionInstalled = enabled
         lock.unlock()
         let controller = controller
-        controller.handlerQueue.async { [weak self] in
+        handlerQueue.async { [weak self] in
             guard let self, let motion = controller.motion else { return }
             if motion.sensorsRequireManualActivation {
                 motion.sensorsActive = enabled
@@ -350,7 +357,7 @@ private final class ControllerSession {
         self.dpads.removeAll()
         lock.unlock()
         let controller = controller
-        controller.handlerQueue.async {
+        handlerQueue.async {
             if let motion = controller.motion {
                 if motion.sensorsRequireManualActivation {
                     motion.sensorsActive = false
@@ -420,7 +427,7 @@ private final class ControllerSession {
 
     private func schedulePropertyRefresh() {
         let controller = controller
-        controller.handlerQueue.async { [weak self] in
+        handlerQueue.async { [weak self] in
             guard let self else { return }
             let battery = Self.batteryText(controller.battery)
             let motion = controller.motion
