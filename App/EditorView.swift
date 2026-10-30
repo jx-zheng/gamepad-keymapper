@@ -1318,18 +1318,18 @@ private struct PermissionsView: View {
                     get: { model.settings.mappingEnabled },
                     set: { model.setMappingEnabled($0) }
                 ))
-                HStack {
-                    Text("Button debounce")
-                    Slider(value: Binding(
+                mappingSlider(
+                    "Button debounce",
+                    value: Binding(
                         get: { model.settings.debounceMilliseconds },
                         set: { model.settings.debounceMilliseconds = $0; model.noteTuningChanged() }
-                    ), in: 0...80)
-                    Text("\(Int(model.settings.debounceMilliseconds)) ms")
-                        .frame(width: 48, alignment: .trailing)
-                }
-                HStack {
-                    Text("Stick deadzone")
-                    Slider(value: Binding(
+                    ),
+                    range: 0...80,
+                    readout: "\(Int(model.settings.debounceMilliseconds.rounded())) ms"
+                )
+                mappingSlider(
+                    "Stick deadzone",
+                    value: Binding(
                         get: { model.settings.stickDeadzone },
                         set: {
                             model.settings.stickDeadzone = $0
@@ -1338,8 +1338,10 @@ private struct PermissionsView: View {
                             }
                             model.noteTuningChanged()
                         }
-                    ), in: 0.05...0.8)
-                }
+                    ),
+                    range: 0.05...0.8,
+                    readout: "\(Int((model.settings.stickDeadzone * 100).rounded()))%"
+                )
             }
             Section("Login") {
                 Toggle("Open at login", isOn: Binding(
@@ -1370,6 +1372,25 @@ private struct PermissionsView: View {
         }
         .formStyle(.grouped)
         .onAppear { model.syncLaunchAtLogin() }
+    }
+
+    /// Same label column as the toggles in this form. The readout stays a fixed width so the slider cannot cover it.
+    private func mappingSlider(
+        _ title: String,
+        value: Binding<Double>,
+        range: ClosedRange<Double>,
+        readout: String
+    ) -> some View {
+        LabeledContent(title) {
+            HStack(spacing: 12) {
+                Slider(value: value, in: range)
+                Text(readout)
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+                    .frame(width: 64, alignment: .trailing)
+                    .lineLimit(1)
+            }
+        }
     }
 }
 
