@@ -1,0 +1,622 @@
+import Foundation
+
+enum EngineEffect: Equatable {
+    case actionBegan(MapperAction)
+    case actionEnded(MapperAction)
+    case pointerDelta(dx: Double, dy: Double)
+    case scrollDelta(dx: Double, dy: Double)
+    case showRadial(RadialMenu, selection: Int?)
+    case updateRadial(Int?)
+    case hideRadial
+    case layersChanged
+    case captured(ControllerButton)
+}
+
+/// Turns debounced button and stick samples into actions.
+///
+/// Call it from one thread. Controller ids are opaque strings; each controller keeps its own
+/// held buttons, layer toggles, and debounce state so two pads can be used at once.
+struct MappingInterpreter {
+    var debounce: TimeInterval
+    var stickDeadzone: Double
+    var stickReleaseZone: Double
+    var captureNextPress = false
+
+    private struct DebouncerKey: Hashable {
+        var controller: String
+        var button: String
+    }
+
+    private struct RadialSession: Equatable {
+        var controller: String
+        var menuID: UUID
+        /// The button that opened the menu. Later edits to the profile must not change which release closes it.
+        var triggerID: String
+        var selection: Int?
+    }
+
+    private struct StickPair {
+        var left = StickDigitalizer()
+        var right = StickDigitalizer()
+    }
+
+    private var debouncers: [DebouncerKey: ButtonDebouncer] = [:]
+    private var held: [String: Set<String>] = [:]
+    private var toggled: [String: Set<UUID>] = [:]
+    private var openHolds: [String: MapperAction] = [:]
+    private var radial: RadialSession?
+    private var sticks: [String: StickPair] = [:]
+    private var lastStickSample: [String: TimeInterval] = [:]
+    private var lastPointerTime: TimeInterval?
+
+    init(debounce: TimeInterval = 0.015, stickDeadzone: Double = 0.28, stickReleaseZone: Double = 0.20) {
+        self.debounce = debounce
+        self.stickDeadzone = stickDeadzone
+        self.stickReleaseZone = stickReleaseZone
+    }
+
+    func isButtonHeld(controller: String, button: ControllerButton) -> Bool {
+        held[controller, default: []].contains(button.id)
+    }
+
+    func heldButtonIDs(controller: String) -> Set<String> {
+        held[controller, default: []]
+    }
+
+    /// Bumps only when the set of held buttons changes. The engine uses it to skip gyro reinstalls.
+    private(set) var holdGeneration: UInt64 = 0
+
+    /// True while a held button is a continuous pointer nudge. The app should pump `poll` only then.
+    var needsPointerPump: Bool {
+        openHolds.values.contains { action in
+            if case .mouseMove = action { return true }
+            return false
+        }
+    }
+
+    /// Earliest time a debounced edge should be committed. Nil when nothing is waiting.
+    func nextWakeTime() -> TimeInterval? {
+        var next: TimeInterval?
+        for debouncer in debouncers.values {
+            guard let wake = debouncer.wakeTime() else { continue }
+            if let current = next {
+                if wake < current { next = wake }
+            } else {
+                next = wake
+            }
+        }
+        return next
+    }
+
+    /// Bound on interpreter storage. Used to prove repeated events do not accumulate history.
+    var debugStateCount: Int {
+        debouncers.count + openHolds.count + sticks.count + lastStickSample.count + (radial == nil ? 0 : 1)
+    }
+
+    mutating func ingestButton(
+        controller: String,
+        category: String?,
+        button: ControllerButton,
+        rawPressed: Bool,
+        time: TimeInterval,
+        profile: Profile
+    ) -> [EngineEffect] {
+        let key = DebouncerKey(controller: controller, button: button.id)
+        var debouncer = debouncers[key] ?? ButtonDebouncer(interval: debounce)
+        debouncer.interval = debounce
+        // Listen mode must take the first real press even if it lands inside the chatter window.
+        // Leaving it for the debounce timer made the editor stay on “Listening…”.
+        if rawPressed && captureNextPress {
+            debouncer.noteCommitted(rawPressed: true, time: time)
+            debouncers[key] = debouncer
+            return apply(
+                controller: controller,
+                category: nil,
+                button: button,
+                pressed: true,
+                time: time,
+                profile: profile
+            )
+        }
+        let edge = debouncer.ingest(rawPressed: rawPressed, time: time)
+        debouncers[key] = debouncer
+        guard let pressed = edge else { return [] }
+        return apply(
+            controller: controller,
+            category: nil,
+            button: button,
+            pressed: pressed,
+            time: time,
+            profile: profile
+        )
+    }
+
+    mutating func poll(time: TimeInterval, profile: Profile) -> [EngineEffect] {
+        var effects: [EngineEffect] = []
+        let keys = debouncers.keys.sorted { lhs, rhs in
+            if lhs.controller == rhs.controller { return lhs.button < rhs.button }
+            return lhs.controller < rhs.controller
+        }
+        for key in keys {
+            guard var debouncer = debouncers[key] else { continue }
+            debouncer.interval = debounce
+            let edge = debouncer.poll(time: time)
+            debouncers[key] = debouncer
+            if let pressed = edge {
+                effects += apply(
+                    controller: key.controller,
+                    category: nil,
+                    button: ControllerButton(id: key.button),
+                    pressed: pressed,
+                    time: time,
+                    profile: profile
+                )
+            }
+        }
+        if needsPointerPump {
+            if let lastPointerTime {
+                let step = min(0.05, max(0, time - lastPointerTime))
+                if step > 0 {
+                    for key in openHolds.keys.sorted() {
+                        if let action = openHolds[key], case .mouseMove(let dx, let dy) = action {
+                            effects.append(.pointerDelta(dx: dx * step, dy: dy * step))
+                        }
+                    }
+                }
+            }
+            lastPointerTime = time
+        } else {
+            lastPointerTime = nil
+        }
+        return effects
+    }
+
+    mutating func ingestStick(
+        controller: String,
+        category: String?,
+        side: StickSide,
+        x: Double,
+        y: Double,
+        time: TimeInterval,
+        profile: Profile,
+        directsDpad: Bool = false
+    ) -> [EngineEffect] {
+        let x = min(1, max(-1, x))
+        let y = min(1, max(-1, y))
+
+        // A lone Joy-Con’s stick is the d-pad and often has no separate hat buttons.
+        // A firm push in that mode is the control the editor is waiting for.
+        if captureNextPress, directsDpad, let button = Self.dpadForStick(x: x, y: y) {
+            captureNextPress = false
+            return [.captured(button)]
+        }
+
+        if var session = radial,
+           session.controller == controller,
+           let menu = profile.radialMenus.first(where: { $0.id == session.menuID }),
+           menu.selection.matches(side: side) || (menu.selection == .dpad && directsDpad) {
+            var effects: [EngineEffect] = []
+            let index = RadialGeometry.sliceIndex(dx: x, dy: y, count: menu.items.count, deadzone: stickDeadzone)
+            if index != session.selection {
+                session.selection = index
+                radial = session
+                effects.append(.updateRadial(index))
+            }
+            // Keep the digitalizer in step with the stick, but do not fire direction bindings while aiming.
+            effects += syncDigitalizer(controller: controller, category: category, side: side, x: x, y: y, time: time, profile: profile, emitPresses: false)
+            return effects
+        }
+
+        let mode = side == .left ? profile.sticks.left : profile.sticks.right
+        var effects: [EngineEffect] = []
+
+        switch mode {
+        case .digital:
+            effects += syncDigitalizer(
+                controller: controller,
+                category: category,
+                side: side,
+                x: x,
+                y: y,
+                time: time,
+                profile: profile,
+                emitPresses: true
+            )
+        case .mouse(let sensitivity):
+            var pair = sticks[controller] ?? StickPair()
+            effects += releaseLatchedStick(
+                controller: controller,
+                category: category,
+                side: side,
+                pair: &pair,
+                time: time,
+                profile: profile
+            )
+            sticks[controller] = pair
+            let dt = stickDelta(controller: controller, side: side, time: time)
+            if dt > 0, let shaped = StickMath.shaped(x: x, y: y, deadzone: stickDeadzone) {
+                effects.append(.pointerDelta(
+                    dx: shaped.x * sensitivity * dt,
+                    dy: -shaped.y * sensitivity * dt
+                ))
+            }
+        case .scroll(let sensitivity):
+            var pair = sticks[controller] ?? StickPair()
+            effects += releaseLatchedStick(
+                controller: controller,
+                category: category,
+                side: side,
+                pair: &pair,
+                time: time,
+                profile: profile
+            )
+            sticks[controller] = pair
+            let dt = stickDelta(controller: controller, side: side, time: time)
+            if dt > 0, let shaped = StickMath.shaped(x: x, y: y, deadzone: stickDeadzone) {
+                effects.append(.scrollDelta(
+                    dx: shaped.x * sensitivity * dt,
+                    dy: shaped.y * sensitivity * dt
+                ))
+            }
+        }
+        return effects
+    }
+
+    mutating func clearController(_ controller: String) -> [EngineEffect] {
+        var effects: [EngineEffect] = []
+        let prefix = controller + "|"
+        for key in Array(openHolds.keys) where key.hasPrefix(prefix) {
+            if let action = openHolds.removeValue(forKey: key) {
+                effects.append(.actionEnded(action))
+            }
+        }
+        if radial?.controller == controller {
+            radial = nil
+            effects.append(.hideRadial)
+        }
+        if let buttons = held[controller], !buttons.isEmpty {
+            holdGeneration &+= 1
+        }
+        held[controller] = nil
+        toggled[controller] = nil
+        sticks[controller] = nil
+        debouncers = debouncers.filter { $0.key.controller != controller }
+        lastStickSample = lastStickSample.filter { !$0.key.hasPrefix(prefix) }
+        return effects
+    }
+
+    /// Releases sustained keys and the radial menu without forgetting which buttons are still down.
+    /// A profile switch uses this so a button that is still held does not immediately fire the new profile.
+    mutating func endSustainedActions() -> [EngineEffect] {
+        var effects: [EngineEffect] = []
+        for key in openHolds.keys.sorted() {
+            if let action = openHolds[key] {
+                effects.append(.actionEnded(action))
+            }
+        }
+        openHolds.removeAll()
+        toggled.removeAll()
+        if radial != nil {
+            radial = nil
+            effects.append(.hideRadial)
+        }
+        lastPointerTime = nil
+        // Drop stick timestamps so the next sample cannot fling the pointer across a profile change.
+        lastStickSample.removeAll()
+        return effects
+    }
+
+    /// Ends held keys and drops controller state. Used when mapping is turned off.
+    mutating func resetInteractions() -> [EngineEffect] {
+        var effects: [EngineEffect] = []
+        for key in openHolds.keys.sorted() {
+            if let action = openHolds[key] {
+                effects.append(.actionEnded(action))
+            }
+        }
+        openHolds.removeAll()
+        if radial != nil {
+            radial = nil
+            effects.append(.hideRadial)
+        }
+        if held.values.contains(where: { !$0.isEmpty }) {
+            holdGeneration &+= 1
+        }
+        held.removeAll()
+        toggled.removeAll()
+        debouncers.removeAll()
+        sticks.removeAll()
+        lastStickSample.removeAll()
+        lastPointerTime = nil
+        return effects
+    }
+
+    private mutating func stickDelta(controller: String, side: StickSide, time: TimeInterval) -> TimeInterval {
+        let key = "\(controller)|\(side.rawValue)"
+        let previous = lastStickSample[key]
+        lastStickSample[key] = time
+        guard let previous else { return 0 }
+        return min(0.05, max(0, time - previous))
+    }
+
+    /// Dominant cardinal of a firm stick push. Nil inside the listen deadzone so a resting stick does not assign itself.
+    static func dpadForStick(x: Double, y: Double) -> ControllerButton? {
+        let ax = abs(x)
+        let ay = abs(y)
+        guard max(ax, ay) >= 0.7 else { return nil }
+        if ay >= ax {
+            return y >= 0 ? .dpadUp : .dpadDown
+        }
+        return x >= 0 ? .dpadRight : .dpadLeft
+    }
+
+    private func aimingStick(_ source: RadialSelectionSource) -> StickSide? {
+        switch source {
+        case .leftStick: return .left
+        case .rightStick: return .right
+        case .dpad: return nil
+        }
+    }
+
+    /// Updates the stick's digital latch. Presses are optional so radial aiming can track the stick without firing bindings.
+    private mutating func syncDigitalizer(
+        controller: String,
+        category: String?,
+        side: StickSide,
+        x: Double,
+        y: Double,
+        time: TimeInterval,
+        profile: Profile,
+        emitPresses: Bool
+    ) -> [EngineEffect] {
+        var pair = sticks[controller] ?? StickPair()
+        var digitalizer = side == .left ? pair.left : pair.right
+        digitalizer.deadzone = stickDeadzone
+        digitalizer.releaseZone = stickReleaseZone
+        let change = digitalizer.update(x: x, y: y, side: side)
+        if side == .left { pair.left = digitalizer } else { pair.right = digitalizer }
+        sticks[controller] = pair
+        var effects: [EngineEffect] = []
+        for button in change.released {
+            effects += ingestButton(
+                controller: controller,
+                category: category,
+                button: button,
+                rawPressed: false,
+                time: time,
+                profile: profile
+            )
+        }
+        if emitPresses {
+            for button in change.pressed {
+                effects += ingestButton(
+                    controller: controller,
+                    category: category,
+                    button: button,
+                    rawPressed: true,
+                    time: time,
+                    profile: profile
+                )
+            }
+        }
+        return effects
+    }
+
+    private mutating func releaseLatchedStick(
+        controller: String,
+        category: String?,
+        side: StickSide,
+        time: TimeInterval,
+        profile: Profile
+    ) -> [EngineEffect] {
+        var pair = sticks[controller] ?? StickPair()
+        let effects = releaseLatchedStick(
+            controller: controller,
+            category: category,
+            side: side,
+            pair: &pair,
+            time: time,
+            profile: profile
+        )
+        sticks[controller] = pair
+        return effects
+    }
+
+    private mutating func releaseLatchedStick(
+        controller: String,
+        category: String?,
+        side: StickSide,
+        pair: inout StickPair,
+        time: TimeInterval,
+        profile: Profile
+    ) -> [EngineEffect] {
+        var digitalizer = side == .left ? pair.left : pair.right
+        let released = digitalizer.releaseAll()
+        guard !released.isEmpty else { return [] }
+        if side == .left { pair.left = digitalizer } else { pair.right = digitalizer }
+        var effects: [EngineEffect] = []
+        for button in released {
+            effects += ingestButton(
+                controller: controller,
+                category: category,
+                button: button,
+                rawPressed: false,
+                time: time,
+                profile: profile
+            )
+        }
+        return effects
+    }
+
+    private mutating func apply(
+        controller: String,
+        category: String?,
+        button: ControllerButton,
+        pressed: Bool,
+        time: TimeInterval,
+        profile: Profile
+    ) -> [EngineEffect] {
+        if pressed {
+            if held[controller, default: []].insert(button.id).inserted {
+                holdGeneration &+= 1
+            }
+        } else if held[controller]?.remove(button.id) != nil {
+            holdGeneration &+= 1
+        }
+
+        if pressed && captureNextPress {
+            captureNextPress = false
+            return [.captured(button)]
+        }
+
+        if var session = radial, session.controller == controller {
+            if let menu = profile.radialMenus.first(where: { $0.id == session.menuID }) {
+                if pressed, menu.selection == .dpad, let cardinal = button.cardinal {
+                    let index = RadialGeometry.index(for: cardinal, count: menu.items.count)
+                    if index != session.selection {
+                        session.selection = index
+                        radial = session
+                        return [.updateRadial(index)]
+                    }
+                    return []
+                }
+                if pressed && button.id == "b" && session.triggerID != "b" {
+                    radial = nil
+                    return [.hideRadial]
+                }
+                if !pressed && button.id == session.triggerID {
+                    let action = session.selection.flatMap { index -> MapperAction? in
+                        guard menu.items.indices.contains(index) else { return nil }
+                        return menu.items[index].action
+                    }
+                    radial = nil
+                    var effects: [EngineEffect] = [.hideRadial]
+                    if let action {
+                        effects += fireTap(action)
+                    }
+                    return effects
+                }
+            } else {
+                radial = nil
+                return [.hideRadial]
+            }
+            // Other buttons do not start new actions while the menu is open,
+            // but a release must still end whatever that button was holding.
+            if !pressed, let action = openHolds.removeValue(forKey: holdKey(controller, button)) {
+                return [.actionEnded(action)]
+            }
+            return []
+        }
+
+        if pressed {
+            if let menu = profile.radialMenus.first(where: { $0.trigger.id == button.id }) {
+                radial = RadialSession(controller: controller, menuID: menu.id, triggerID: button.id, selection: nil)
+                var effects: [EngineEffect] = [.showRadial(menu, selection: nil)]
+                if let side = aimingStick(menu.selection) {
+                    effects += releaseLatchedStick(
+                        controller: controller,
+                        category: category,
+                        side: side,
+                        time: time,
+                        profile: profile
+                    )
+                }
+                return effects
+            }
+            if toggleLayers(controller: controller, button: button, profile: profile) {
+                return [.layersChanged]
+            }
+            if profile.layers.contains(where: { layer in
+                if case .hold(let activator) = layer.activation { return activator.id == button.id }
+                return false
+            }) {
+                return [.layersChanged]
+            }
+            if let action = resolve(button: button, controller: controller, profile: profile) {
+                if action.sustainsWhileHeld {
+                    openHolds[holdKey(controller, button)] = action
+                    return [.actionBegan(action)]
+                }
+                return fireTap(action)
+            }
+            return []
+        }
+
+        var effects: [EngineEffect] = []
+        if profile.layerActivatorIDs.contains(button.id) {
+            effects.append(.layersChanged)
+        }
+        if let action = openHolds.removeValue(forKey: holdKey(controller, button)) {
+            effects.append(.actionEnded(action))
+        }
+        return effects
+    }
+
+    private mutating func toggleLayers(controller: String, button: ControllerButton, profile: Profile) -> Bool {
+        var set = toggled[controller, default: []]
+        var didToggle = false
+        for layer in profile.layers {
+            if case .toggle(let activator) = layer.activation, activator.id == button.id {
+                didToggle = true
+                if set.contains(layer.id) {
+                    set.remove(layer.id)
+                } else {
+                    set.insert(layer.id)
+                }
+            }
+        }
+        if didToggle {
+            toggled[controller] = set
+        }
+        return didToggle
+    }
+
+    private func resolve(
+        button: ControllerButton,
+        controller: String,
+        profile: Profile
+    ) -> MapperAction? {
+        let active = profile.layers.filter { isActive($0, controller: controller) }
+        for layer in active.reversed() {
+            if let match = layer.bindings.first(where: { $0.button.id == button.id }) {
+                return match.action
+            }
+            if layer.activation.activator != nil && !layer.allowsFallthrough {
+                return nil
+            }
+        }
+        return nil
+    }
+
+    private func isActive(_ layer: Layer, controller: String) -> Bool {
+        switch layer.activation {
+        case .base:
+            return true
+        case .hold(let button):
+            return held[controller, default: []].contains(button.id)
+        case .toggle:
+            return toggled[controller, default: []].contains(layer.id)
+        }
+    }
+
+    private func holdKey(_ controller: String, _ button: ControllerButton) -> String {
+        "\(controller)|\(button.id)"
+    }
+
+    /// Radial commits and other momentary triggers always complete, even if the action can be held.
+    private func fireTap(_ action: MapperAction) -> [EngineEffect] {
+        switch action {
+        case .mouseMove(let dx, let dy):
+            // One-shot nudge (radial menus). Held pointer actions are integrated by `poll`.
+            return [.pointerDelta(dx: dx / 60, dy: dy / 60)]
+        case .mouseClick(let button, let clicks) where clicks <= 1:
+            let click = MapperAction.mouseClick(button, clicks: 1)
+            return [.actionBegan(click), .actionEnded(click)]
+        case .keyboard(var command) where command.holdLast:
+            command.holdLast = false
+            return [.actionBegan(.keyboard(command))]
+        default:
+            return [.actionBegan(action)]
+        }
+    }
+}

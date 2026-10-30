@@ -1,0 +1,232 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+		98F54143AB4E86B28C3AFEE0 /* Project object */ = {isa = PBXProject; attributes = {BuildIndependentTargetsInParallel = 1; LastUpgradeCheck = 1500; }; buildConfigurationList = 640DC9EFD529235A8D9E2727; compatibilityVersion = "Xcode 14.0"; developmentRegion = en; hasScannedForEncodings = 0; knownRegions = (en, Base); mainGroup = ADCF10F76EBF2A74473E9DC4; productRefGroup = 00C45FD35CB0F9C5F764F070; projectDirPath = ""; projectRoot = ""; targets = (0E8A3AD980EC179856012B7E /* GamepadKeymapper */); };
+		0E8A3AD980EC179856012B7E /* GamepadKeymapper */ = {isa = PBXNativeTarget; buildConfigurationList = 976B52545947CA66FD9EF2A4; buildPhases = (F612CD2E22E187AC48B5913C /* Sources */, 69680EDE0CF9B24DB8DBFE04 /* Frameworks */, 86F6FE2DD6E869C1842A14B3 /* Resources */); buildRules = (); dependencies = (); name = GamepadKeymapper; productName = GamepadKeymapper; productReference = 38A007151ABE87CC01A5B6E9 /* GamepadKeymapper.app */; productType = "com.apple.product-type.application"; };
+		38A007151ABE87CC01A5B6E9 /* GamepadKeymapper.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GamepadKeymapper.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		624A8F936E0903B5DF7F6FC4 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A1C0DE000000000000000001 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		E7A9D1BC879CD1B1999130F0 /* ButtonDebouncer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ButtonDebouncer.swift; sourceTree = "<group>"; };
+		A7C0DE0000000000000000B1 /* AccessibilityTrust.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityTrust.swift; sourceTree = "<group>"; };
+		C463D273E1CB1D035B51923D /* ControllerButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControllerButton.swift; sourceTree = "<group>"; };
+		DE94DBDD4B9CC3DA75742216 /* GyroPointer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GyroPointer.swift; sourceTree = "<group>"; };
+		B0C0DE0000000000000000C1 /* JoyConOrientation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JoyConOrientation.swift; sourceTree = "<group>"; };
+		C0HID0000000000000000A1 /* JoyConHIDReport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JoyConHIDReport.swift; sourceTree = "<group>"; };
+		B767BB61AC34AA075A58C325 /* KeyCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyCatalog.swift; sourceTree = "<group>"; };
+		5CDB0A155D555F363F0353BA /* MapperAction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapperAction.swift; sourceTree = "<group>"; };
+		A6EA8F0FB59929484AEF5C8C /* MappingInterpreter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MappingInterpreter.swift; sourceTree = "<group>"; };
+		545ACD7FFFB050F79A8808EB /* Profile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Profile.swift; sourceTree = "<group>"; };
+		3A9ED3C0B679C2EE67C48592 /* ProfileCodec.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileCodec.swift; sourceTree = "<group>"; };
+		B073D2A2B584891BC3DFC490 /* ProfileSanitizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileSanitizer.swift; sourceTree = "<group>"; };
+		FD983631A0E21832F3AB8315 /* ProfileSelector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileSelector.swift; sourceTree = "<group>"; };
+		6A3F87D1B5599AE7DD62D0A1 /* ProfileStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileStore.swift; sourceTree = "<group>"; };
+		1F0878896FCFA86190A17D30 /* RadialGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RadialGeometry.swift; sourceTree = "<group>"; };
+		90DED903B89506553A77AE39 /* SampleProfiles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleProfiles.swift; sourceTree = "<group>"; };
+		6B6B86B65D00DB877EF5EB1E /* StickMath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StickMath.swift; sourceTree = "<group>"; };
+		AE3337ABF309F2F80B31B237 /* ActionEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionEditor.swift; sourceTree = "<group>"; };
+		54628DF94BA9B9CD246EDB2A /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
+		E665FA2E22B110AA6A0F683F /* ControllerMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControllerMonitor.swift; sourceTree = "<group>"; };
+		C0HID0000000000000000B1 /* JoyConHIDMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JoyConHIDMonitor.swift; sourceTree = "<group>"; };
+		21A9DF5692AD08E355284431 /* EditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorView.swift; sourceTree = "<group>"; };
+		C0C0DE0000000000000000A1 /* ControlGlyph.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlGlyph.swift; sourceTree = "<group>"; };
+		064B99491DED757747164F8A /* GamepadKeymapperApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GamepadKeymapperApp.swift; sourceTree = "<group>"; };
+		E554962E01E664B1F7F7A2A8 /* InputSynthesizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InputSynthesizer.swift; sourceTree = "<group>"; };
+		0256FBA8C5077E45099E30E5 /* MappingEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MappingEngine.swift; sourceTree = "<group>"; };
+		560C6D7F7ABF0EBD0D2EBCC2 /* MenuBarContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarContent.swift; sourceTree = "<group>"; };
+		81E6E0052BDC3D0D2DED8D7E /* RadialOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RadialOverlay.swift; sourceTree = "<group>"; };
+		3ACB27D8B37173372709708A /* SystemServices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemServices.swift; sourceTree = "<group>"; };
+		FE8CA8BF7FEEFD3A8B1BE0AC /* ButtonDebouncer.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7A9D1BC879CD1B1999130F0 /* ButtonDebouncer.swift */; };
+		A7C0DE0000000000000000B2 /* AccessibilityTrust.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7C0DE0000000000000000B1 /* AccessibilityTrust.swift */; };
+		E70A9D1C6D5D198A2AB02349 /* ControllerButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = C463D273E1CB1D035B51923D /* ControllerButton.swift */; };
+		5EFE6F5DFB70E710169E052E /* GyroPointer.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE94DBDD4B9CC3DA75742216 /* GyroPointer.swift */; };
+		B0C0DE0000000000000000C2 /* JoyConOrientation.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0C0DE0000000000000000C1 /* JoyConOrientation.swift */; };
+		C0HID0000000000000000A2 /* JoyConHIDReport.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0HID0000000000000000A1 /* JoyConHIDReport.swift */; };
+		C0HID0000000000000000B2 /* JoyConHIDMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0HID0000000000000000B1 /* JoyConHIDMonitor.swift */; };
+		6CF0E9B69685678F7B4E05FE /* KeyCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = B767BB61AC34AA075A58C325 /* KeyCatalog.swift */; };
+		A1CA5DE43A8F982DF69D95AA /* MapperAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CDB0A155D555F363F0353BA /* MapperAction.swift */; };
+		BEDB1AF84814D0D8F03B2F9A /* MappingInterpreter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6EA8F0FB59929484AEF5C8C /* MappingInterpreter.swift */; };
+		096E003283A5828CC70F4692 /* Profile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 545ACD7FFFB050F79A8808EB /* Profile.swift */; };
+		7CE72DD21375979EF06B808D /* ProfileCodec.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A9ED3C0B679C2EE67C48592 /* ProfileCodec.swift */; };
+		A0B2D1D4B273BF6921B16B53 /* ProfileSanitizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B073D2A2B584891BC3DFC490 /* ProfileSanitizer.swift */; };
+		7D0D5227D4554689E37C1C9A /* ProfileSelector.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD983631A0E21832F3AB8315 /* ProfileSelector.swift */; };
+		50813B9E2449CF4948D7FF9D /* ProfileStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A3F87D1B5599AE7DD62D0A1 /* ProfileStore.swift */; };
+		6D10DAA39E229909AB72ED23 /* RadialGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F0878896FCFA86190A17D30 /* RadialGeometry.swift */; };
+		2F62575E266A27396C989633 /* SampleProfiles.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90DED903B89506553A77AE39 /* SampleProfiles.swift */; };
+		34303C51EDD80AC1FA7D3F69 /* StickMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B6B86B65D00DB877EF5EB1E /* StickMath.swift */; };
+		1601E7714AD916799F8AAAC8 /* ActionEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE3337ABF309F2F80B31B237 /* ActionEditor.swift */; };
+		6647B957C0BCE26BFBFC83FE /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54628DF94BA9B9CD246EDB2A /* AppModel.swift */; };
+		CBD764250B1600F59EF97BBF /* ControllerMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = E665FA2E22B110AA6A0F683F /* ControllerMonitor.swift */; };
+		4084D4095CA3C1F4F6EB1482 /* EditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21A9DF5692AD08E355284431 /* EditorView.swift */; };
+		C0C0DE0000000000000000A2 /* ControlGlyph.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0C0DE0000000000000000A1 /* ControlGlyph.swift */; };
+		B14E063C1E0D0712A694094C /* GamepadKeymapperApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 064B99491DED757747164F8A /* GamepadKeymapperApp.swift */; };
+		D14BE43F068C04F32480CF44 /* InputSynthesizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = E554962E01E664B1F7F7A2A8 /* InputSynthesizer.swift */; };
+		7F0A63038071E46294464838 /* MappingEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0256FBA8C5077E45099E30E5 /* MappingEngine.swift */; };
+		C53F11F18376D92B23661974 /* MenuBarContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 560C6D7F7ABF0EBD0D2EBCC2 /* MenuBarContent.swift */; };
+		D65F8FAA8FA7FECB0430F84B /* RadialOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81E6E0052BDC3D0D2DED8D7E /* RadialOverlay.swift */; };
+		0AEED849893B5B381CE37C40 /* SystemServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ACB27D8B37173372709708A /* SystemServices.swift */; };
+		A1C0DE000000000000000002 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1C0DE000000000000000001 /* Assets.xcassets */; };
+		F612CD2E22E187AC48B5913C /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (
+				A7C0DE0000000000000000B2 /* AccessibilityTrust.swift in Sources */,
+				FE8CA8BF7FEEFD3A8B1BE0AC /* ButtonDebouncer.swift in Sources */,
+				E70A9D1C6D5D198A2AB02349 /* ControllerButton.swift in Sources */,
+				5EFE6F5DFB70E710169E052E /* GyroPointer.swift in Sources */,
+				B0C0DE0000000000000000C2 /* JoyConOrientation.swift in Sources */,
+				C0HID0000000000000000A2 /* JoyConHIDReport.swift in Sources */,
+				C0HID0000000000000000B2 /* JoyConHIDMonitor.swift in Sources */,
+				6CF0E9B69685678F7B4E05FE /* KeyCatalog.swift in Sources */,
+				A1CA5DE43A8F982DF69D95AA /* MapperAction.swift in Sources */,
+				BEDB1AF84814D0D8F03B2F9A /* MappingInterpreter.swift in Sources */,
+				096E003283A5828CC70F4692 /* Profile.swift in Sources */,
+				7CE72DD21375979EF06B808D /* ProfileCodec.swift in Sources */,
+				A0B2D1D4B273BF6921B16B53 /* ProfileSanitizer.swift in Sources */,
+				7D0D5227D4554689E37C1C9A /* ProfileSelector.swift in Sources */,
+				50813B9E2449CF4948D7FF9D /* ProfileStore.swift in Sources */,
+				6D10DAA39E229909AB72ED23 /* RadialGeometry.swift in Sources */,
+				2F62575E266A27396C989633 /* SampleProfiles.swift in Sources */,
+				34303C51EDD80AC1FA7D3F69 /* StickMath.swift in Sources */,
+				1601E7714AD916799F8AAAC8 /* ActionEditor.swift in Sources */,
+				6647B957C0BCE26BFBFC83FE /* AppModel.swift in Sources */,
+				CBD764250B1600F59EF97BBF /* ControllerMonitor.swift in Sources */,
+				4084D4095CA3C1F4F6EB1482 /* EditorView.swift in Sources */,
+				C0C0DE0000000000000000A2 /* ControlGlyph.swift in Sources */,
+				B14E063C1E0D0712A694094C /* GamepadKeymapperApp.swift in Sources */,
+				D14BE43F068C04F32480CF44 /* InputSynthesizer.swift in Sources */,
+				7F0A63038071E46294464838 /* MappingEngine.swift in Sources */,
+				C53F11F18376D92B23661974 /* MenuBarContent.swift in Sources */,
+				D65F8FAA8FA7FECB0430F84B /* RadialOverlay.swift in Sources */,
+				0AEED849893B5B381CE37C40 /* SystemServices.swift in Sources */,
+			); runOnlyForDeploymentPostprocessing = 0; };
+		69680EDE0CF9B24DB8DBFE04 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		86F6FE2DD6E869C1842A14B3 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (
+				A1C0DE000000000000000002 /* Assets.xcassets in Resources */,
+			); runOnlyForDeploymentPostprocessing = 0; };
+		FC8F5A85394B0D5FF7E93AFA /* GamepadKeymapperCore */ = {isa = PBXGroup; children = (
+				A7C0DE0000000000000000B1 /* AccessibilityTrust.swift */,
+				E7A9D1BC879CD1B1999130F0 /* ButtonDebouncer.swift */,
+				C463D273E1CB1D035B51923D /* ControllerButton.swift */,
+				DE94DBDD4B9CC3DA75742216 /* GyroPointer.swift */,
+				B0C0DE0000000000000000C1 /* JoyConOrientation.swift */,
+				C0HID0000000000000000A1 /* JoyConHIDReport.swift */,
+				B767BB61AC34AA075A58C325 /* KeyCatalog.swift */,
+				5CDB0A155D555F363F0353BA /* MapperAction.swift */,
+				A6EA8F0FB59929484AEF5C8C /* MappingInterpreter.swift */,
+				545ACD7FFFB050F79A8808EB /* Profile.swift */,
+				3A9ED3C0B679C2EE67C48592 /* ProfileCodec.swift */,
+				B073D2A2B584891BC3DFC490 /* ProfileSanitizer.swift */,
+				FD983631A0E21832F3AB8315 /* ProfileSelector.swift */,
+				6A3F87D1B5599AE7DD62D0A1 /* ProfileStore.swift */,
+				1F0878896FCFA86190A17D30 /* RadialGeometry.swift */,
+				90DED903B89506553A77AE39 /* SampleProfiles.swift */,
+				6B6B86B65D00DB877EF5EB1E /* StickMath.swift */,
+			); path = Sources/GamepadKeymapperCore; sourceTree = "<group>"; };
+		CF8D0BD4B75E8C2C174692A5 /* App */ = {isa = PBXGroup; children = (
+				AE3337ABF309F2F80B31B237 /* ActionEditor.swift */,
+				54628DF94BA9B9CD246EDB2A /* AppModel.swift */,
+				E665FA2E22B110AA6A0F683F /* ControllerMonitor.swift */,
+				C0HID0000000000000000B1 /* JoyConHIDMonitor.swift */,
+				C0C0DE0000000000000000A1 /* ControlGlyph.swift */,
+				21A9DF5692AD08E355284431 /* EditorView.swift */,
+				064B99491DED757747164F8A /* GamepadKeymapperApp.swift */,
+				E554962E01E664B1F7F7A2A8 /* InputSynthesizer.swift */,
+				0256FBA8C5077E45099E30E5 /* MappingEngine.swift */,
+				560C6D7F7ABF0EBD0D2EBCC2 /* MenuBarContent.swift */,
+				81E6E0052BDC3D0D2DED8D7E /* RadialOverlay.swift */,
+				3ACB27D8B37173372709708A /* SystemServices.swift */,
+				A1C0DE000000000000000001 /* Assets.xcassets */,
+				624A8F936E0903B5DF7F6FC4 /* Info.plist */,
+			); path = App; sourceTree = "<group>"; };
+		00C45FD35CB0F9C5F764F070 /* Products */ = {isa = PBXGroup; children = (38A007151ABE87CC01A5B6E9 /* GamepadKeymapper.app */,); name = Products; sourceTree = "<group>"; };
+		9642F1047C1002A1EE72F0DB /* Source */ = {isa = PBXGroup; children = (FC8F5A85394B0D5FF7E93AFA /* GamepadKeymapperCore */, CF8D0BD4B75E8C2C174692A5 /* App */); name = Source; sourceTree = "<group>"; };
+		ADCF10F76EBF2A74473E9DC4 = {isa = PBXGroup; children = (9642F1047C1002A1EE72F0DB /* Source */, 00C45FD35CB0F9C5F764F070 /* Products */); sourceTree = "<group>"; };
+		73BFC4993D558C2844970A56 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_NS_ASSERTIONS = YES;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.0;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				ONLY_ACTIVE_ARCH = YES;
+			}; name = Debug; };
+		3C5BC6FE1E438E679FB7F74F /* Release */ = {isa = XCBuildConfiguration; buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.0;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+			}; name = Release; };
+		A45358D7F57D12409C956205 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGNING_ALLOWED = YES;
+				CODE_SIGNING_REQUIRED = NO;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = ;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = NO;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = App/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = app.gamepadkeymapper.GamepadKeymapper;
+				PRODUCT_NAME = GamepadKeymapper;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+			}; name = Debug; };
+		7A3CC3E65B4BE81911CE6871 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGNING_ALLOWED = YES;
+				CODE_SIGNING_REQUIRED = NO;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = NO;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = App/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = app.gamepadkeymapper.GamepadKeymapper;
+				PRODUCT_NAME = GamepadKeymapper;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+			}; name = Release; };
+		640DC9EFD529235A8D9E2727 /* Build configuration list for PBXProject */ = {isa = XCConfigurationList; buildConfigurations = (73BFC4993D558C2844970A56 /* Debug */, 3C5BC6FE1E438E679FB7F74F /* Release */); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		976B52545947CA66FD9EF2A4 /* Build configuration list for PBXNativeTarget */ = {isa = XCConfigurationList; buildConfigurations = (A45358D7F57D12409C956205 /* Debug */, 7A3CC3E65B4BE81911CE6871 /* Release */); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+
+	};
+	rootObject = 98F54143AB4E86B28C3AFEE0 /* Project object */;
+}
