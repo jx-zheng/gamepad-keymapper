@@ -304,10 +304,6 @@ private struct BindingsTab: View {
                         model.beginCapture(bindingID: binding.id)
                     }
                 }
-                TextField("Controller category", text: categoryBinding(layer: layer, binding: binding), prompt: Text("Any controller"))
-                Text("Leave blank to use every pad. A category such as DualSense limits the binding to matching hardware.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
                 ActionEditor(
                     action: binding.action,
                     shortcutNames: model.shortcutNames,
@@ -323,23 +319,6 @@ private struct BindingsTab: View {
                 }
             }
         }
-    }
-
-    private func categoryBinding(layer: Layer, binding: Binding) -> Binding<String> {
-        Binding(
-            get: {
-                if case .productCategory(let category) = binding.controllerMatch { return category }
-                return ""
-            },
-            set: { text in
-                let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-                model.update(profile.id) { profile in
-                    guard let layerIndex = profile.layers.firstIndex(where: { $0.id == layer.id }),
-                          let bindingIndex = profile.layers[layerIndex].bindings.firstIndex(where: { $0.id == binding.id }) else { return }
-                    profile.layers[layerIndex].bindings[bindingIndex].controllerMatch = trimmed.isEmpty ? .any : .productCategory(trimmed)
-                }
-            }
-        )
     }
 
     private func layerActivation(_ layer: Layer) -> some View {

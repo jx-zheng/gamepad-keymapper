@@ -10,6 +10,7 @@
 		0E8A3AD980EC179856012B7E /* GamepadKeymapper */ = {isa = PBXNativeTarget; buildConfigurationList = 976B52545947CA66FD9EF2A4; buildPhases = (F612CD2E22E187AC48B5913C /* Sources */, 69680EDE0CF9B24DB8DBFE04 /* Frameworks */, 86F6FE2DD6E869C1842A14B3 /* Resources */); buildRules = (); dependencies = (); name = GamepadKeymapper; productName = GamepadKeymapper; productReference = 38A007151ABE87CC01A5B6E9 /* GamepadKeymapper.app */; productType = "com.apple.product-type.application"; };
 		38A007151ABE87CC01A5B6E9 /* GamepadKeymapper.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GamepadKeymapper.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		624A8F936E0903B5DF7F6FC4 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A1C0DE000000000000000001 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		E7A9D1BC879CD1B1999130F0 /* ButtonDebouncer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ButtonDebouncer.swift; sourceTree = "<group>"; };
 		C463D273E1CB1D035B51923D /* ControllerButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControllerButton.swift; sourceTree = "<group>"; };
 		DE94DBDD4B9CC3DA75742216 /* GyroPointer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GyroPointer.swift; sourceTree = "<group>"; };
@@ -58,6 +59,7 @@
 		C53F11F18376D92B23661974 /* MenuBarContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 560C6D7F7ABF0EBD0D2EBCC2 /* MenuBarContent.swift */; };
 		D65F8FAA8FA7FECB0430F84B /* RadialOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81E6E0052BDC3D0D2DED8D7E /* RadialOverlay.swift */; };
 		0AEED849893B5B381CE37C40 /* SystemServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ACB27D8B37173372709708A /* SystemServices.swift */; };
+		A1C0DE000000000000000002 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1C0DE000000000000000001 /* Assets.xcassets */; };
 		F612CD2E22E187AC48B5913C /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (
 				FE8CA8BF7FEEFD3A8B1BE0AC /* ButtonDebouncer.swift in Sources */,
 				E70A9D1C6D5D198A2AB02349 /* ControllerButton.swift in Sources */,
@@ -85,7 +87,9 @@
 				0AEED849893B5B381CE37C40 /* SystemServices.swift in Sources */,
 			); runOnlyForDeploymentPostprocessing = 0; };
 		69680EDE0CF9B24DB8DBFE04 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
-		86F6FE2DD6E869C1842A14B3 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		86F6FE2DD6E869C1842A14B3 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (
+				A1C0DE000000000000000002 /* Assets.xcassets in Resources */,
+			); runOnlyForDeploymentPostprocessing = 0; };
 		FC8F5A85394B0D5FF7E93AFA /* GamepadKeymapperCore */ = {isa = PBXGroup; children = (
 				E7A9D1BC879CD1B1999130F0 /* ButtonDebouncer.swift */,
 				C463D273E1CB1D035B51923D /* ControllerButton.swift */,
@@ -113,6 +117,7 @@
 				560C6D7F7ABF0EBD0D2EBCC2 /* MenuBarContent.swift */,
 				81E6E0052BDC3D0D2DED8D7E /* RadialOverlay.swift */,
 				3ACB27D8B37173372709708A /* SystemServices.swift */,
+				A1C0DE000000000000000001 /* Assets.xcassets */,
 				624A8F936E0903B5DF7F6FC4 /* Info.plist */,
 			); path = App; sourceTree = "<group>"; };
 		00C45FD35CB0F9C5F764F070 /* Products */ = {isa = PBXGroup; children = (38A007151ABE87CC01A5B6E9 /* GamepadKeymapper.app */,); name = Products; sourceTree = "<group>"; };
@@ -155,6 +160,7 @@
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 			}; name = Release; };
 		A45358D7F57D12409C956205 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGNING_ALLOWED = NO;
 				CODE_SIGNING_REQUIRED = NO;
 				CODE_SIGN_IDENTITY = "";
@@ -176,6 +182,7 @@
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 			}; name = Debug; };
 		7A3CC3E65B4BE81911CE6871 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGNING_ALLOWED = NO;
 				CODE_SIGNING_REQUIRED = NO;
 				CODE_SIGN_IDENTITY = "";

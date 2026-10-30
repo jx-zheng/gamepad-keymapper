@@ -136,55 +136,6 @@ struct GyroSettings: Equatable, Hashable, Codable {
     )
 }
 
-enum ControllerMatch: Equatable, Hashable {
-    case any
-    case productCategory(String)
-
-    func matches(_ category: String?) -> Bool {
-        switch self {
-        case .any:
-            return true
-        case .productCategory(let expected):
-            guard let category else { return false }
-            return category.caseInsensitiveCompare(expected) == .orderedSame
-        }
-    }
-}
-
-extension ControllerMatch: Codable {
-    private enum CodingKeys: String, CodingKey {
-        case type
-        case category
-    }
-
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        switch try container.decode(String.self, forKey: .type) {
-        case "any":
-            self = .any
-        case "productCategory":
-            self = .productCategory(try container.decode(String.self, forKey: .category))
-        default:
-            throw DecodingError.dataCorruptedError(
-                forKey: .type,
-                in: container,
-                debugDescription: "Unknown controller match"
-            )
-        }
-    }
-
-    func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        switch self {
-        case .any:
-            try container.encode("any", forKey: .type)
-        case .productCategory(let category):
-            try container.encode("productCategory", forKey: .type)
-            try container.encode(category, forKey: .category)
-        }
-    }
-}
-
 enum LayerActivation: Equatable, Hashable {
     case base
     case hold(ControllerButton)
@@ -242,18 +193,11 @@ extension LayerActivation: Codable {
 struct Binding: Equatable, Hashable, Identifiable, Codable {
     var id: UUID
     var button: ControllerButton
-    var controllerMatch: ControllerMatch
     var action: MapperAction
 
-    init(
-        id: UUID = UUID(),
-        button: ControllerButton,
-        controllerMatch: ControllerMatch = .any,
-        action: MapperAction
-    ) {
+    init(id: UUID = UUID(), button: ControllerButton, action: MapperAction) {
         self.id = id
         self.button = button
-        self.controllerMatch = controllerMatch
         self.action = action
     }
 }

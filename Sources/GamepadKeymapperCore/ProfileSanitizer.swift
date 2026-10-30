@@ -19,7 +19,6 @@ enum ProfileSanitizer {
     static let maxShortcutLength = 120
     static let maxPathLength = 512
     static let maxButtonIDLength = 80
-    static let maxCategoryLength = 80
 
     struct Report: Equatable {
         var document: ProfileDocument
@@ -147,18 +146,6 @@ enum ProfileSanitizer {
 
     private static func sanitizeBinding(_ binding: inout Binding, warnings: inout [String]) {
         binding.button = sanitizeButton(binding.button)
-        switch binding.controllerMatch {
-        case .any:
-            break
-        case .productCategory(let category):
-            let clean = clip(category, max: maxCategoryLength, fallback: "")
-            if clean.isEmpty || !isSingleLine(clean) {
-                binding.controllerMatch = .any
-                warnings.append("A controller match was reset because its name was not usable.")
-            } else {
-                binding.controllerMatch = .productCategory(clean)
-            }
-        }
         sanitizeAction(&binding.action, warnings: &warnings)
     }
 

@@ -1,5 +1,7 @@
 # Gamepad Keymapper
 
+<img src="Docs/app-icon.png" alt="Gamepad Keymapper app icon" width="96" />
+
 A menu-bar app for macOS 14 and later that turns a game controller into keyboard, mouse, Shortcut, and app-launch input. Every feature is included. There is no trial, no account, and nothing to buy.
 
 Gamepad Keymapper is an independent project. It is not affiliated with ConMapper or its developer. The behavior below follows that app’s public feature description only. The code, UI, and profile format are original.
@@ -104,7 +106,7 @@ A debounce timer is armed only after an edge, and only until that edge is stable
 
 Switching profiles releases keys and mouse buttons that are still down. A button that is still physically held does not fire the new profile until you release it and press it again. Disconnecting a controller releases only that controller’s holds.
 
-Two controllers are different sessions even when they are the same model. A binding can target any pad, or only a product category such as `DualSense`. Category matching applies to every connected pad of that category. macOS does not give the app a stable hardware serial, so instance identity lasts for the connection only.
+Two controllers are different sessions even when they are the same model. A binding applies to every connected pad. Each pad keeps its own held buttons and layer toggles, so one controller’s hold does not change the other.
 
 ## Security
 
@@ -145,8 +147,7 @@ Use this on a Mac before handing the build to someone else. `swift test` does no
 - [ ] Desktop is active in TextEdit. The Xcode profile becomes active when Xcode is frontmost.
 - [ ] Opening this app’s editor does not replace the frontmost profile with a profile for Gamepad Keymapper.
 - [ ] Switching apps while a click is held releases the mouse button and does not immediately click in the new profile.
-- [ ] Two pads can hold different buttons at once. Unplugging one releases only that pad.
-- [ ] A binding limited to a product category does not fire on a different category.
+- [ ] Two pads can hold different buttons at once. The same binding runs on each pad. Unplugging one releases only that pad.
 
 **Pointer, gyro, radial**
 
@@ -176,11 +177,7 @@ Samples/desktop-navigation.json
 GamepadKeymapper.xcodeproj
 ```
 
-Regenerate the Xcode project after adding a Swift file:
-
-```bash
-python3 Scripts/generate_xcodeproj.py
-```
+`GamepadKeymapper.xcodeproj` is the project to open and build. Add new Swift files to that project when you introduce them.
 
 ## License
 

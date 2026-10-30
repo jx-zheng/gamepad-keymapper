@@ -159,7 +159,6 @@ enum SampleProfiles {
         Binding(
             id: UUID(uuidString: id)!,
             button: button,
-            controllerMatch: .any,
             action: action
         )
     }

@@ -512,7 +512,7 @@ struct MappingInterpreter {
             }) {
                 return [.layersChanged]
             }
-            if let action = resolve(button: button, controller: controller, category: category, profile: profile) {
+            if let action = resolve(button: button, controller: controller, profile: profile) {
                 if action.sustainsWhileHeld {
                     openHolds[holdKey(controller, button)] = action
                     return [.actionBegan(action)]
@@ -554,22 +554,12 @@ struct MappingInterpreter {
     private func resolve(
         button: ControllerButton,
         controller: String,
-        category: String?,
         profile: Profile
     ) -> MapperAction? {
         let active = profile.layers.filter { isActive($0, controller: controller) }
         for layer in active.reversed() {
-            let matches = layer.bindings.filter { binding in
-                binding.button.id == button.id && binding.controllerMatch.matches(category)
-            }
-            if let specific = matches.first(where: {
-                if case .productCategory = $0.controllerMatch { return true }
-                return false
-            }) {
-                return specific.action
-            }
-            if let any = matches.first {
-                return any.action
+            if let match = layer.bindings.first(where: { $0.button.id == button.id }) {
+                return match.action
             }
             if layer.activation.activator != nil && !layer.allowsFallthrough {
                 return nil

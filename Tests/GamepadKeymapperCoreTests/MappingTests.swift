@@ -106,13 +106,12 @@ final class MappingTests: XCTestCase {
         )
     }
 
-    func testCategorySpecificBindingBeatsAny() {
+    func testSameBindingFiresOnEveryController() {
         let profile = Profile(
             name: "Match",
             isDefault: true,
             layers: [Layer(name: "Base", activation: .base, bindings: [
-                Binding(button: .a, controllerMatch: .any, action: .keyboard(.tap("x"))),
-                Binding(button: .a, controllerMatch: .productCategory("DualSense"), action: .keyboard(.tap("c")))
+                Binding(button: .a, action: .keyboard(.tap("c")))
             ])]
         )
         var interpreter = MappingInterpreter(debounce: 0)
@@ -122,7 +121,7 @@ final class MappingTests: XCTestCase {
         )
         XCTAssertEqual(
             interpreter.ingestButton(controller: "xb", category: "Xbox", button: .a, rawPressed: true, time: 0.1, profile: profile),
-            [.actionBegan(.keyboard(.tap("x")))]
+            [.actionBegan(.keyboard(.tap("c")))]
         )
     }
 
