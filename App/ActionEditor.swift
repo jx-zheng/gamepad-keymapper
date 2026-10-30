@@ -10,7 +10,7 @@ struct ActionEditor: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Picker("Action", selection: kindBinding) {
+            Picker("Action type", selection: kindBinding) {
                 ForEach(ActionKind.allCases) { kind in
                     Text(kind.rawValue).tag(kind)
                 }
@@ -125,7 +125,8 @@ struct ActionEditor: View {
                     copy.steps[index].modifiers = modifiers
                     onChange(.keyboard(copy))
                 }
-                .frame(height: 28)
+                .frame(height: 22)
+                .frame(maxWidth: .infinity, alignment: .leading)
                 modifierToggles(step: step) { modifiers in
                     var copy = command
                     copy.steps[index].modifiers = modifiers
@@ -153,7 +154,7 @@ struct ActionEditor: View {
                 onChange(.keyboard(copy))
             }
             .disabled(command.steps.count >= 8)
-            Text("Click “Key” then press a key on your keyboard. This field does not watch other apps.")
+            Text("Click the key field, then press a key. It only listens in this window.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -268,13 +269,20 @@ final class KeyCaptureNSView: NSView {
 
     override func draw(_ dirtyRect: NSRect) {
         NSColor.controlBackgroundColor.setFill()
-        dirtyRect.fill()
-        let text = "Click here, then press a key"
+        bounds.fill()
+        NSColor.separatorColor.setStroke()
+        let border = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: 4, yRadius: 4)
+        border.lineWidth = 1
+        border.stroke()
+        let text = "Click, then press a key"
+        let font = NSFont.systemFont(ofSize: 12)
         let attrs: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: 12),
+            .font: font,
             .foregroundColor: NSColor.secondaryLabelColor
         ]
-        text.draw(at: NSPoint(x: 8, y: 6), withAttributes: attrs)
+        let size = text.size(withAttributes: attrs)
+        let point = NSPoint(x: 8, y: max(2, (bounds.height - size.height) / 2))
+        text.draw(at: point, withAttributes: attrs)
     }
 
     override func mouseDown(with event: NSEvent) {

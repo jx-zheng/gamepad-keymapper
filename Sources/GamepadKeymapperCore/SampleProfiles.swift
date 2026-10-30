@@ -3,7 +3,7 @@ import Foundation
 /// Built-in profiles that ship with the app and with `Samples/desktop-navigation.json`.
 enum SampleProfiles {
     static func document() -> ProfileDocument {
-        ProfileDocument(profiles: [desktop(), xcode()])
+        ProfileDocument(profiles: [desktop()])
     }
 
     static func desktop() -> Profile {
@@ -109,49 +109,6 @@ enum SampleProfiles {
                 invertY: false,
                 activation: .whileHeld(.leftTrigger)
             )
-        )
-    }
-
-    static func xcode() -> Profile {
-        let base = Layer(
-            id: UUID(uuidString: "E4A1C0DE-0002-4000-8000-000000000002")!,
-            name: "Base",
-            activation: .base,
-            bindings: [
-                bind("E4A1C0DE-0002-4000-8000-000000000011", .a, .keyboard(.tap("r", modifiers: .command))),
-                bind("E4A1C0DE-0002-4000-8000-000000000012", .b, .keyboard(.tap("period", modifiers: .command))),
-                bind("E4A1C0DE-0002-4000-8000-000000000013", .x, .keyboard(.tap("b", modifiers: .command))),
-                bind("E4A1C0DE-0002-4000-8000-000000000014", .y, .keyboard(.tap("slash", modifiers: .command))),
-                bind("E4A1C0DE-0002-4000-8000-000000000015", .dpadUp, .keyboard(.hold("upArrow"))),
-                bind("E4A1C0DE-0002-4000-8000-000000000016", .dpadDown, .keyboard(.hold("downArrow"))),
-                bind("E4A1C0DE-0002-4000-8000-000000000017", .dpadLeft, .keyboard(.hold("leftArrow"))),
-                bind("E4A1C0DE-0002-4000-8000-000000000018", .dpadRight, .keyboard(.hold("rightArrow")))
-            ]
-        )
-        let debug = Layer(
-            id: UUID(uuidString: "E4A1C0DE-0002-4000-8000-000000000003")!,
-            name: "Debug",
-            activation: .hold(.leftShoulder),
-            allowsFallthrough: true,
-            bindings: [
-                bind("E4A1C0DE-0002-4000-8000-000000000021", .a, .keyboard(.tap("f6"))),
-                bind("E4A1C0DE-0002-4000-8000-000000000022", .b, .keyboard(.tap("f7"))),
-                bind("E4A1C0DE-0002-4000-8000-000000000023", .x, .keyboard(.tap("period", modifiers: .command))),
-                bind(
-                    "E4A1C0DE-0002-4000-8000-000000000024",
-                    .y,
-                    .keyboard(.tap("o", modifiers: [.command, .shift]))
-                )
-            ]
-        )
-        return Profile(
-            id: UUID(uuidString: "E4A1C0DE-0002-4000-8000-000000000001")!,
-            name: "Xcode",
-            isDefault: false,
-            bundleIdentifiers: ["com.apple.dt.Xcode"],
-            layers: [base, debug],
-            sticks: StickConfig(left: .digital, right: .scroll(sensitivity: 240)),
-            gyro: .off
         )
     }
 

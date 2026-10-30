@@ -98,14 +98,12 @@ struct EditorView: View {
                 Button("Add Profile", action: model.addProfile)
                     .disabled(model.document.profiles.count >= ProfileSanitizer.maxProfiles)
             }
-            Section("Library") {
-                Label("Devices", systemImage: "gamecontroller")
-                    .lineLimit(1)
-                    .tag(SidebarItem.devices)
-                Label("Permissions", systemImage: "lock.shield")
-                    .lineLimit(1)
-                    .tag(SidebarItem.permissions)
-            }
+            Label("Devices", systemImage: "gamecontroller")
+                .lineLimit(1)
+                .tag(SidebarItem.devices)
+            Label("Permissions", systemImage: "lock.shield")
+                .lineLimit(1)
+                .tag(SidebarItem.permissions)
         }
         .listStyle(.sidebar)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -184,7 +182,7 @@ private struct ProfileEditor: View {
             ))
             .font(.title2)
             .textFieldStyle(.plain)
-            Text(profile.isDefault ? "Fallback when no app-specific profile matches." : "Used when one of its apps is frontmost.")
+            Text(profileModeCaption(profile))
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -200,6 +198,11 @@ private struct ProfileEditor: View {
                 get: { profile.isDefault },
                 set: { isDefault in if isDefault { model.makeDefault(profile.id) } }
             ))
+            if model.settings.profileOverrideID == profile.id {
+                Button("Automatic") { model.clearOverride() }
+            } else {
+                Button("Pin") { model.pin(profileID: profile.id) }
+            }
             Button("Duplicate") { model.duplicate(profileID: profile.id) }
                 .disabled(model.document.profiles.count >= ProfileSanitizer.maxProfiles)
             Button("Delete", role: .destructive) { model.delete(profileID: profile.id) }
@@ -221,6 +224,16 @@ private struct ProfileEditor: View {
                 }
             }
         }
+    }
+
+    private func profileModeCaption(_ profile: Profile) -> String {
+        if model.settings.profileOverrideID == profile.id {
+            return "Pinned — ignores frontmost app"
+        }
+        if model.settings.profileOverrideID != nil {
+            return "Automatic is off — another profile is pinned"
+        }
+        return "Automatic"
     }
 }
 
@@ -880,12 +893,13 @@ private struct AppsTab: View {
 
     var body: some View {
         Form {
-            Section("This profile turns on for") {
+            Section("Apps that select this profile") {
                 if profile.bundleIdentifiers.isEmpty {
                     Text(profile.isDefault
-                         ? "No apps are listed, so this profile is the fallback."
-                         : "Add an app. Until you do, this profile is only used if you pin it from the menu bar.")
+                         ? "None yet. Automatic switching does not treat this profile as app-specific. It is the fallback when nothing is pinned and no other profile lists the frontmost app."
+                         : "None yet. Automatic switching ignores this profile until you add an app. Pin it, or mark it as the default, to use it without an app.")
                         .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 ForEach(profile.bundleIdentifiers, id: \.self) { bundle in
                     HStack {

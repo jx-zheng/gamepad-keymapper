@@ -13,6 +13,14 @@ struct MenuBarContent: View {
         if let name = model.frontmostName {
             Text("Frontmost: \(name)")
         }
+        if model.settings.profileOverrideID != nil {
+            Text("Pinned — ignores frontmost app")
+            Button("Automatic") {
+                model.clearOverride()
+            }
+        } else {
+            Text("Automatic")
+        }
         if !model.accessibilityTrusted {
             Button("Grant Accessibility…") {
                 model.openAccessibilitySettings()
@@ -21,11 +29,6 @@ struct MenuBarContent: View {
         Divider()
         Button("Open Editor…") {
             model.showEditor()
-        }
-        if model.settings.profileOverrideID != nil {
-            Button("Use Automatic Profile") {
-                model.clearOverride()
-            }
         }
         Menu("Pin Profile") {
             ForEach(model.document.profiles) { profile in

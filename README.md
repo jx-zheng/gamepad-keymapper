@@ -17,7 +17,7 @@ Gamepad Keymapper is an independent project. It is not affiliated with ConMapper
 - A macOS Shortcut by name, through `/usr/bin/shortcuts run` (one argument, not a shell command).
 - Launch or activate an app by bundle id or an absolute `.app` path.
 - Text snippets.
-- App profiles that follow the frontmost app, plus a default fallback. Pin one profile from the menu bar when you want to override that.
+- App profiles. A pinned profile ignores the frontmost app. Otherwise a profile is chosen only when one of the apps you added on its Apps tab is frontmost. The default profile is the fallback.
 - Layers. Hold or toggle a modifier button to swap in another binding set. Unmapped buttons can fall through to the base layer. The modifier itself does not also type.
 - More than one controller at the same time. Each pad keeps its own held buttons and layer toggles.
 - Radial menus. Hold the trigger, aim with a stick or the D-pad, release to run the slice. B cancels. Releasing with nothing highlighted cancels.
@@ -92,7 +92,7 @@ Desktop (the fallback):
 | Right stick | Scroll |
 | ZL / LT | Gyro pointer, off until you enable it |
 
-A second profile, Xcode, activates when `com.apple.dt.Xcode` is frontmost (Run, Stop, Build, comment, and a Debug layer on L).
+The sample ships Desktop only. Add apps on the Apps tab if you want a profile to follow the frontmost app. Pin a profile from the menu bar or the editor when that choice should win.
 
 ![Pointer and gyro settings](Docs/screenshots/pointer.png)
 
@@ -147,7 +147,7 @@ Use this on a Mac before handing the build to someone else. `swift test` does no
 
 **Profiles and controllers**
 
-- [ ] Desktop is active in TextEdit. The Xcode profile becomes active when Xcode is frontmost.
+- [ ] With nothing pinned, Desktop stays active until another profile lists the frontmost app. Pinning a profile ignores the frontmost app until you choose Automatic.
 - [ ] Opening this app’s editor does not replace the frontmost profile with a profile for Gamepad Keymapper.
 - [ ] Switching apps while a click is held releases the mouse button and does not immediately click in the new profile.
 - [ ] Two pads can hold different buttons at once. The same binding runs on each pad. Unplugging one releases only that pad.

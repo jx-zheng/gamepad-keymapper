@@ -16,7 +16,21 @@ struct GamepadKeymapperApp: App {
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
-        NSApp.setActivationPolicy(.accessory)
+        // The plist is a menu-bar agent. Become a normal app only while the editor
+        // window exists, including when it is miniaturized, so the Dock can restore it.
+        if EditorWindow.isOpen {
+            NSApp.setActivationPolicy(.regular)
+        } else {
+            NSApp.setActivationPolicy(.accessory)
+        }
+    }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        // A miniaturized editor reports no visible windows (`flag` is false) but is still open.
+        if EditorWindow.isOpen {
+            EditorWindow.restoreFromDock()
+        }
+        return flag || EditorWindow.isOpen
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -34,9 +48,32 @@ enum EditorWindow {
     private static var controller: NSWindowController?
     private static let windowDelegate = EditorWindowDelegate()
 
+    /// True while the editor window is on screen or miniaturized. A closed window is not open.
+    static var isOpen: Bool {
+        guard let window = controller?.window else { return false }
+        return window.isVisible || window.isMiniaturized
+    }
+
+    /// Clicking the Dock icon restores the same editor. Miniaturize does not close the window.
+    @MainActor
+    static func restoreFromDock() {
+        guard let window = controller?.window else { return }
+        // Stay a regular app so the Dock tile remains the way back.
+        NSApp.setActivationPolicy(.regular)
+        if window.isMiniaturized {
+            window.deminiaturize(nil)
+        }
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
     @MainActor
     static func show(model: AppModel) {
         windowDelegate.model = model
+        // LSUIElement stays true in Info.plist. A regular policy while this window
+        // exists (including miniaturized) puts an icon in the Dock. Closing the
+        // window, not minimizing it, returns to a menu-bar-only agent.
+        NSApp.setActivationPolicy(.regular)
         if let controller {
             if let window = controller.window {
                 applyUsableFrame(window, resetIfCramped: true)
@@ -79,6 +116,9 @@ private final class EditorWindowDelegate: NSObject, NSWindowDelegate {
     weak var model: AppModel?
 
     func windowWillClose(_ notification: Notification) {
+        // Close hides the editor and drops the Dock icon. Miniaturize does not
+        // send this, so the yellow button leaves a Dock tile that restores the window.
+        NSApp.setActivationPolicy(.accessory)
         Task { @MainActor in
             model?.engine.setDevicesVisible(false)
             model?.disarmCapture()

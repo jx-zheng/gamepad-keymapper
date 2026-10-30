@@ -15,7 +15,7 @@ final class ProfileTests: XCTestCase {
         let sample = SampleProfiles.document()
         let merged = sample.merging(sample)
         XCTAssertEqual(merged, sample)
-        XCTAssertEqual(merged.profiles.map(\.name), ["Desktop", "Xcode"])
+        XCTAssertEqual(merged.profiles.map(\.name), ["Desktop"])
 
         let url = repoRoot().appendingPathComponent("Samples/desktop-navigation.json")
         let file = try ProfileCodec.decode(Data(contentsOf: url))
@@ -24,18 +24,20 @@ final class ProfileTests: XCTestCase {
         XCTAssertEqual(fromFile.profiles.map(\.id), sample.profiles.map(\.id))
         XCTAssertEqual(fromFile.profiles.map(\.name), sample.profiles.map(\.name))
 
-        var incoming = ProfileDocument(profiles: [sample.profiles[0]])
+        let extra = Profile.starter(name: "Extra", isDefault: false)
+        let withExtra = sample.merging(ProfileDocument(profiles: [extra]))
+        var incoming = ProfileDocument(profiles: [withExtra.profiles[0]])
         incoming.profiles[0].name = "Desktop from file"
-        let replaced = sample.merging(incoming)
-        XCTAssertEqual(replaced.profiles.count, sample.profiles.count)
+        let replaced = withExtra.merging(incoming)
+        XCTAssertEqual(replaced.profiles.count, withExtra.profiles.count)
         XCTAssertEqual(replaced.profiles[0].id, sample.profiles[0].id)
         XCTAssertEqual(replaced.profiles[0].name, "Desktop from file")
-        XCTAssertEqual(replaced.profiles[1].name, "Xcode")
+        XCTAssertEqual(replaced.profiles[1].name, "Extra")
 
-        let extra = Profile.starter(name: "Extra", isDefault: false)
-        let appended = sample.merging(ProfileDocument(profiles: [extra]))
+        let kept = Profile.starter(name: "Kept", isDefault: false)
+        let appended = sample.merging(ProfileDocument(profiles: [kept]))
         XCTAssertEqual(appended.profiles.count, sample.profiles.count + 1)
-        XCTAssertEqual(appended.profiles.last?.id, extra.id)
+        XCTAssertEqual(appended.profiles.last?.id, kept.id)
     }
 
     func testCheckedInSampleMatchesFactory() throws {
@@ -53,23 +55,25 @@ final class ProfileTests: XCTestCase {
     }
 
     func testProfileSelection() {
-        let profiles = SampleProfiles.document().profiles
+        let desktop = SampleProfiles.desktop()
+        var apps = Profile.starter(name: "Apps", isDefault: false)
+        apps.bundleIdentifiers = ["com.apple.dt.Xcode"]
+        let profiles = [desktop, apps]
         XCTAssertEqual(
             ProfileSelector.select(from: profiles, frontmostBundleID: "com.apple.dt.Xcode", overrideID: nil)?.name,
-            "Xcode"
+            "Apps"
         )
         XCTAssertEqual(
             ProfileSelector.select(from: profiles, frontmostBundleID: "COM.APPLE.DT.XCODE", overrideID: nil)?.name,
-            "Xcode"
+            "Apps"
         )
         XCTAssertEqual(
             ProfileSelector.select(from: profiles, frontmostBundleID: "com.apple.Safari", overrideID: nil)?.name,
             "Desktop"
         )
-        let xcodeID = profiles[1].id
         XCTAssertEqual(
-            ProfileSelector.select(from: profiles, frontmostBundleID: "com.apple.Safari", overrideID: xcodeID)?.name,
-            "Xcode"
+            ProfileSelector.select(from: profiles, frontmostBundleID: "com.apple.Safari", overrideID: apps.id)?.name,
+            "Apps"
         )
         var disabled = profiles
         disabled[1].enabled = false
@@ -78,7 +82,7 @@ final class ProfileTests: XCTestCase {
             "Desktop"
         )
         disabled[0].enabled = false
-        XCTAssertNil(ProfileSelector.select(from: disabled, frontmostBundleID: nil, overrideID: xcodeID))
+        XCTAssertNil(ProfileSelector.select(from: disabled, frontmostBundleID: nil, overrideID: apps.id))
     }
 
     func testStoreRoundTrip() throws {
