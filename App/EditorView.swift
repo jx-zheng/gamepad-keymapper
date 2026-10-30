@@ -28,7 +28,7 @@ struct EditorView: View {
     }
 
     private var accessibilityBanner: some View {
-        HStack(alignment: .top, spacing: 10) {
+        HStack(alignment: .center, spacing: 10) {
             Image(systemName: "exclamationmark.circle.fill")
                 .foregroundStyle(.yellow)
             VStack(alignment: .leading, spacing: 4) {
@@ -44,8 +44,17 @@ struct EditorView: View {
             Spacer(minLength: 8)
             Button("Open System Settings") { model.openAccessibilitySettings() }
         }
-        .padding(12)
-        .background(Color.yellow.opacity(0.16))
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, alignment: .center)
+        .background {
+            // Flatten the tint onto an opaque fill so the sidebar divider cannot show through.
+            ZStack {
+                Color(nsColor: .windowBackgroundColor)
+                Color.yellow.opacity(0.28)
+            }
+            .compositingGroup()
+        }
     }
 
     private var unsavedBanner: some View {
