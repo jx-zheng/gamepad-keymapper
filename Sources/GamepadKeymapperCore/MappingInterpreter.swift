@@ -112,6 +112,7 @@ struct MappingInterpreter {
             category: categories[controller],
             button: button,
             pressed: pressed,
+            time: time,
             profile: profile
         )
     }
@@ -133,6 +134,7 @@ struct MappingInterpreter {
                     category: categories[key.controller],
                     button: ControllerButton(id: key.button),
                     pressed: pressed,
+                    time: time,
                     profile: profile
                 )
             }
@@ -174,13 +176,16 @@ struct MappingInterpreter {
            session.controller == controller,
            let menu = profile.radialMenus.first(where: { $0.id == session.menuID }),
            menu.selection.matches(side: side) {
+            var effects: [EngineEffect] = []
             let index = RadialGeometry.sliceIndex(dx: x, dy: y, count: menu.items.count, deadzone: stickDeadzone)
             if index != session.selection {
                 session.selection = index
                 radial = session
-                return [.updateRadial(index)]
+                effects.append(.updateRadial(index))
             }
-            return []
+            // Keep the digitalizer in step with the stick, but do not fire direction bindings while aiming.
+            effects += syncDigitalizer(controller: controller, category: category, side: side, x: x, y: y, time: time, profile: profile, emitPresses: false)
+            return effects
         }
 
         var pair = sticks[controller] ?? StickPair()
@@ -290,7 +295,6 @@ struct MappingInterpreter {
             radial = nil
             effects.append(.hideRadial)
         }
-        captureNextPress = false
         lastPointerTime = nil
         // Drop stick timestamps so the next sample cannot fling the pointer across a profile change.
         lastStickSample.removeAll()
@@ -317,7 +321,6 @@ struct MappingInterpreter {
         categories.removeAll()
         lastStickSample.removeAll()
         lastPointerTime = nil
-        captureNextPress = false
         return effects
     }
 
@@ -327,6 +330,78 @@ struct MappingInterpreter {
         lastStickSample[key] = time
         guard let previous else { return 0 }
         return min(0.05, max(0, time - previous))
+    }
+
+    private func aimingStick(_ source: RadialSelectionSource) -> StickSide? {
+        switch source {
+        case .leftStick: return .left
+        case .rightStick: return .right
+        case .dpad: return nil
+        }
+    }
+
+    /// Updates the stick's digital latch. Presses are optional so radial aiming can track the stick without firing bindings.
+    private mutating func syncDigitalizer(
+        controller: String,
+        category: String?,
+        side: StickSide,
+        x: Double,
+        y: Double,
+        time: TimeInterval,
+        profile: Profile,
+        emitPresses: Bool
+    ) -> [EngineEffect] {
+        var pair = sticks[controller] ?? StickPair()
+        var digitalizer = side == .left ? pair.left : pair.right
+        digitalizer.deadzone = stickDeadzone
+        digitalizer.releaseZone = stickReleaseZone
+        let change = digitalizer.update(x: x, y: y, side: side)
+        if side == .left { pair.left = digitalizer } else { pair.right = digitalizer }
+        sticks[controller] = pair
+        var effects: [EngineEffect] = []
+        for button in change.released {
+            effects += ingestButton(
+                controller: controller,
+                category: category,
+                button: button,
+                rawPressed: false,
+                time: time,
+                profile: profile
+            )
+        }
+        if emitPresses {
+            for button in change.pressed {
+                effects += ingestButton(
+                    controller: controller,
+                    category: category,
+                    button: button,
+                    rawPressed: true,
+                    time: time,
+                    profile: profile
+                )
+            }
+        }
+        return effects
+    }
+
+    private mutating func releaseLatchedStick(
+        controller: String,
+        category: String?,
+        side: StickSide,
+        time: TimeInterval,
+        profile: Profile
+    ) -> [EngineEffect] {
+        var pair = sticks[controller] ?? StickPair()
+        let effects = releaseLatchedStick(
+            controller: controller,
+            category: category,
+            side: side,
+            pair: &pair,
+            time: time,
+            profile: profile
+        )
+        sticks[controller] = pair
+        return effects
     }
 
     private mutating func releaseLatchedStick(
@@ -360,6 +435,7 @@ struct MappingInterpreter {
         category: String?,
         button: ControllerButton,
         pressed: Bool,
+        time: TimeInterval,
         profile: Profile
     ) -> [EngineEffect] {
         if pressed {
@@ -415,7 +491,17 @@ struct MappingInterpreter {
         if pressed {
             if let menu = profile.radialMenus.first(where: { $0.trigger.id == button.id }) {
                 radial = RadialSession(controller: controller, menuID: menu.id, trigger: button, selection: nil)
-                return [.showRadial(menu, selection: nil)]
+                var effects: [EngineEffect] = [.showRadial(menu, selection: nil)]
+                if let side = aimingStick(menu.selection) {
+                    effects += releaseLatchedStick(
+                        controller: controller,
+                        category: category,
+                        side: side,
+                        time: time,
+                        profile: profile
+                    )
+                }
+                return effects
             }
             if toggleLayers(controller: controller, button: button, profile: profile) {
                 return [.layersChanged]

@@ -9,7 +9,7 @@ import GamepadKeymapperCore
 /// Call it from the mapper queue only.
 final class InputSynthesizer {
     private var keyCounts: [CGKeyCode: Int] = [:]
-    private var mouseButtons: Set<CGMouseButton> = []
+    private var mouseCounts: [CGMouseButton: Int] = [:]
     private var pointerX = 0.0
     private var pointerY = 0.0
     private var scrollX = 0.0
@@ -123,16 +123,16 @@ final class InputSynthesizer {
             postKey(code, down: false, flags: [])
         }
         keyCounts.removeAll()
-        for button in mouseButtons {
+        for button in mouseCounts.keys {
             postMouse(button, down: false, clickState: 1)
         }
-        mouseButtons.removeAll()
+        mouseCounts.removeAll()
     }
 
     private var dragEvent: (CGEventType, CGMouseButton) {
-        if mouseButtons.contains(.left) { return (.leftMouseDragged, .left) }
-        if mouseButtons.contains(.right) { return (.rightMouseDragged, .right) }
-        if mouseButtons.contains(.center) { return (.otherMouseDragged, .center) }
+        if (mouseCounts[.left] ?? 0) > 0 { return (.leftMouseDragged, .left) }
+        if (mouseCounts[.right] ?? 0) > 0 { return (.rightMouseDragged, .right) }
+        if (mouseCounts[.center] ?? 0) > 0 { return (.otherMouseDragged, .center) }
         return (.mouseMoved, .left)
     }
 
@@ -156,6 +156,9 @@ final class InputSynthesizer {
     private func runSteps(_ run: KeyboardRun, steps: [KeyStep], holdLast: Bool, index: Int) {
         guard !run.cancelled, run.token > 0 else { return }
         if index >= steps.count {
+            if !holdLast {
+                keyboardRuns.removeAll { $0.token == run.token }
+            }
             return
         }
         let isLast = index == steps.count - 1
@@ -223,21 +226,20 @@ final class InputSynthesizer {
 
     private func mouse(_ kind: MouseButtonKind, down: Bool, clickState: Int) {
         let button = cgButton(kind)
-        let type = mouseType(kind, down: down)
         if down {
-            mouseButtons.insert(button)
+            let count = mouseCounts[button, default: 0]
+            mouseCounts[button] = count + 1
+            guard count == 0 else { return }
+            postMouse(button, down: true, clickState: clickState)
         } else {
-            mouseButtons.remove(button)
+            guard let count = mouseCounts[button], count > 0 else { return }
+            if count == 1 {
+                mouseCounts[button] = nil
+                postMouse(button, down: false, clickState: clickState)
+            } else {
+                mouseCounts[button] = count - 1
+            }
         }
-        guard let location = CGEvent(source: nil)?.location else { return }
-        guard let event = CGEvent(
-            mouseEventSource: nil,
-            mouseType: type,
-            mouseCursorPosition: location,
-            mouseButton: button
-        ) else { return }
-        event.setIntegerValueField(.mouseEventClickState, value: Int64(clickState))
-        event.post(tap: .cghidEventTap)
     }
 
     private func postMouse(_ button: CGMouseButton, down: Bool, clickState: Int) {
@@ -260,10 +262,32 @@ final class InputSynthesizer {
 
     private func type(_ text: String) {
         guard !text.isEmpty else { return }
-        var units = Array(text.utf16)
+        let units = Array(text.utf16)
+        var start = 0
+        while start < units.count {
+            var end = min(start + 20, units.count)
+            // Keep a surrogate pair in one chunk. A high surrogate must not be the last unit.
+            if end < units.count, end > start, isHighSurrogate(units[end - 1]) {
+                end -= 1
+            }
+            if end == start {
+                end = min(start + 2, units.count)
+            }
+            postUnicode(Array(units[start..<end]))
+            start = end
+        }
+    }
+
+    private func isHighSurrogate(_ unit: UInt16) -> Bool {
+        unit >= 0xD800 && unit <= 0xDBFF
+    }
+
+    private func postUnicode(_ units: [UInt16]) {
+        guard !units.isEmpty else { return }
         let source = CGEventSource(stateID: .hidSystemState)
         guard let down = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: true),
               let up = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: false) else { return }
+        var units = units
         units.withUnsafeBufferPointer { buffer in
             down.keyboardSetUnicodeString(stringLength: buffer.count, unicodeString: buffer.baseAddress)
             up.keyboardSetUnicodeString(stringLength: buffer.count, unicodeString: buffer.baseAddress)
@@ -334,17 +358,6 @@ final class InputSynthesizer {
         case .left: return .left
         case .right: return .right
         case .middle: return .center
-        }
-    }
-
-    private func mouseType(_ kind: MouseButtonKind, down: Bool) -> CGEventType {
-        switch (kind, down) {
-        case (.left, true): return .leftMouseDown
-        case (.left, false): return .leftMouseUp
-        case (.right, true): return .rightMouseDown
-        case (.right, false): return .rightMouseUp
-        case (.middle, true): return .otherMouseDown
-        case (.middle, false): return .otherMouseUp
         }
     }
 

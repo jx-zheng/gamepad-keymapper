@@ -284,6 +284,40 @@ final class MappingTests: XCTestCase {
         )
     }
 
+    func testRadialAimDoesNotLeaveALatchedStickDirection() {
+        var profile = Profile.starter(name: "Radial", isDefault: true)
+        profile.sticks.left = .digital
+        profile.layers[0].bindings.append(
+            Binding(button: .leftStickUp, action: .keyboard(.hold("upArrow")))
+        )
+        profile.radialMenus = [RadialMenu(
+            name: "Apps",
+            trigger: .menu,
+            selection: .leftStick,
+            items: [RadialItem(label: "Mute", action: .media(.mute))]
+        )]
+        var interpreter = MappingInterpreter(debounce: 0, stickDeadzone: 0.5, stickReleaseZone: 0.3)
+        let pressed = interpreter.ingestStick(
+            controller: "c", category: nil, side: .left, x: 0, y: 1, time: 0, profile: profile
+        )
+        XCTAssertTrue(pressed.contains(.actionBegan(.keyboard(.hold("upArrow")))))
+        let opened = interpreter.ingestButton(
+            controller: "c", category: nil, button: .menu, rawPressed: true, time: 0.1, profile: profile
+        )
+        XCTAssertTrue(opened.contains(.actionEnded(.keyboard(.hold("upArrow")))))
+        let aiming = interpreter.ingestStick(
+            controller: "c", category: nil, side: .left, x: 0, y: 1, time: 0.2, profile: profile
+        )
+        XCTAssertFalse(aiming.contains(.actionBegan(.keyboard(.hold("upArrow")))))
+        _ = interpreter.ingestButton(
+            controller: "c", category: nil, button: .menu, rawPressed: false, time: 0.3, profile: profile
+        )
+        let after = interpreter.ingestStick(
+            controller: "c", category: nil, side: .left, x: 0, y: 1, time: 0.4, profile: profile
+        )
+        XCTAssertFalse(after.contains(.actionBegan(.keyboard(.hold("upArrow")))))
+    }
+
     func testRadialReleaseEndsHeldAction() {
         let profile = SampleProfiles.desktop()
         var interpreter = MappingInterpreter(debounce: 0)
