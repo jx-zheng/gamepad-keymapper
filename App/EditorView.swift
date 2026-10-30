@@ -1,5 +1,15 @@
 import SwiftUI
 
+enum EditorMetrics {
+    static let sidebarWidth: CGFloat = 232
+    static let minimumWidth: CGFloat = 900
+    static let minimumHeight: CGFloat = 600
+    static let defaultWidth: CGFloat = 1120
+    static let defaultHeight: CGFloat = 740
+    /// Detail width where the control list and the action editor sit side by side.
+    static let bindingsSideBySide: CGFloat = 760
+}
+
 struct EditorView: View {
     @EnvironmentObject private var model: AppModel
 
@@ -27,16 +37,24 @@ struct EditorView: View {
     }
 
     private var editor: some View {
-        NavigationSplitView {
-            sidebar
-                .layoutPriority(1)
-                .navigationSplitViewColumnWidth(min: 220, ideal: 248, max: 320)
-        } detail: {
-            detail
-                .navigationSplitViewColumnWidth(min: 640, ideal: 900)
+        NavigationStack {
+            HStack(spacing: 0) {
+                sidebar
+                    .frame(width: EditorMetrics.sidebarWidth)
+                    .frame(maxHeight: .infinity)
+                Divider()
+                detail
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+            .toolbar {
+                ToolbarItemGroup {
+                    Button("Import") { model.importProfiles() }
+                    Button("Export") { model.exportProfiles() }
+                }
+            }
         }
-        .navigationSplitViewStyle(.balanced)
-        .frame(minWidth: 960, minHeight: 620)
+        .frame(minWidth: EditorMetrics.minimumWidth, minHeight: EditorMetrics.minimumHeight)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onChange(of: model.sidebar) { _, item in
             if model.captureBindingID != nil {
                 model.disarmCapture()
@@ -47,12 +65,6 @@ struct EditorView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text(model.alertMessage ?? "")
-        }
-        .toolbar {
-            ToolbarItemGroup {
-                Button("Import") { model.importProfiles() }
-                Button("Export") { model.exportProfiles() }
-            }
         }
     }
 
@@ -96,6 +108,7 @@ struct EditorView: View {
             }
         }
         .listStyle(.sidebar)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     @ViewBuilder
@@ -127,8 +140,8 @@ private struct ProfileEditor: View {
     }
 
     var body: some View {
-        if let profile {
-            VStack(alignment: .leading, spacing: 0) {
+        VStack(alignment: .leading, spacing: 0) {
+            if let profile {
                 profileHeader(profile)
                 Picker("Section", selection: $model.editorTab) {
                     ForEach(EditorTab.allCases) { tab in
@@ -151,6 +164,7 @@ private struct ProfileEditor: View {
                 }
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     private func profileHeader(_ profile: Profile) -> some View {
@@ -158,6 +172,7 @@ private struct ProfileEditor: View {
             profileHeaderRow(profile, stacksControls: false)
             profileHeaderRow(profile, stacksControls: true)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
     }
 
@@ -174,8 +189,7 @@ private struct ProfileEditor: View {
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .frame(minWidth: 180, alignment: .leading)
-        .layoutPriority(1)
+        .frame(maxWidth: .infinity, alignment: .leading)
 
         let controls = HStack(spacing: 10) {
             Toggle("Enabled", isOn: Binding(
@@ -191,7 +205,6 @@ private struct ProfileEditor: View {
             Button("Delete", role: .destructive) { model.delete(profileID: profile.id) }
                 .disabled(model.document.profiles.count < 2)
         }
-        .fixedSize(horizontal: true, vertical: false)
 
         return Group {
             if stacksControls {
@@ -199,11 +212,12 @@ private struct ProfileEditor: View {
                     title
                     controls
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             } else {
                 HStack(alignment: .firstTextBaseline, spacing: 16) {
                     title
-                    Spacer(minLength: 8)
                     controls
+                        .fixedSize(horizontal: true, vertical: false)
                 }
             }
         }
@@ -224,73 +238,27 @@ private struct BindingsTab: View {
     }
 
     var body: some View {
-        HSplitView {
-            VStack(alignment: .leading, spacing: 8) {
-                if let layer {
-                    Picker("Layer", selection: layerSelection) {
-                        ForEach(profile.layers) { item in
-                            Text(layerTitle(item)).tag(Optional(item.id))
-                        }
-                    }
-                    .labelsHidden()
-                    HStack {
-                        Button("Add Layer") { model.addLayer(to: profile.id) }
-                            .disabled(profile.layers.count >= ProfileSanitizer.maxLayers)
-                        Button("Delete Layer") {
-                            if let id = layer.id as UUID? {
-                                model.deleteLayer(profileID: profile.id, layerID: id)
-                            }
-                        }
-                        .disabled(profile.layers.count < 2 || isBase(layer))
-                        Spacer()
-                        Button("Add Binding") {
-                            model.editingLayerID = layer.id
-                            selectedButtonID = ControllerButton.a.id
-                            model.addBinding(profileID: profile.id, layerID: layer.id)
-                        }
-                        .disabled(layer.bindings.count >= ProfileSanitizer.maxBindings)
-                    }
-                    layerActivation(layer)
-                    List(selection: $selectedButtonID) {
-                        ForEach(ControlSection.editor) { section in
-                            Section(section.title) {
-                                ForEach(section.buttons, id: \.id) { button in
-                                    controlRow(button, in: layer)
-                                }
-                            }
-                        }
-                        if !extraButtons(in: layer).isEmpty {
-                            Section("Other") {
-                                ForEach(extraButtons(in: layer), id: \.id) { button in
-                                    controlRow(button, in: layer)
-                                }
-                            }
-                        }
-                    }
-                    if !profile.validationWarnings().isEmpty {
-                        ForEach(profile.validationWarnings(), id: \.self) { warning in
-                            Text(warning)
-                                .font(.caption)
-                                .foregroundStyle(.orange)
-                        }
-                        .padding(.horizontal, 8)
-                    }
+        GeometryReader { geo in
+            let sideBySide = geo.size.width >= EditorMetrics.bindingsSideBySide
+            if sideBySide {
+                HStack(spacing: 0) {
+                    controlColumn
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    Divider()
+                    inspectorColumn
+                        .frame(width: min(400, max(280, geo.size.width * 0.38)))
+                        .frame(maxHeight: .infinity)
+                }
+            } else {
+                VStack(spacing: 0) {
+                    controlColumn
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    Divider()
+                    inspectorColumn
+                        .frame(maxWidth: .infinity)
+                        .frame(height: max(220, geo.size.height * 0.42))
                 }
             }
-            .padding(12)
-            .frame(minWidth: 340, idealWidth: 480, maxWidth: .infinity, alignment: .leading)
-            .layoutPriority(1)
-
-            Group {
-                if let layer, let button = selectedControl(in: layer) {
-                    inspector(layer: layer, button: button)
-                } else {
-                    ContentUnavailableView("Select a Control", systemImage: "gamecontroller", description: Text("Choose a button, stick, or trigger to edit its action."))
-                }
-            }
-            .frame(minWidth: 260, idealWidth: 340, maxWidth: 420, alignment: .leading)
-            .layoutPriority(0)
-            .padding(16)
         }
         .onAppear {
             model.editingLayerID = layer?.id ?? profile.layers.first?.id
@@ -301,6 +269,77 @@ private struct BindingsTab: View {
         .onChange(of: selectedButtonID) { _, _ in
             unmappedDraft = .keyboard(.tap("space"))
         }
+    }
+
+    private var controlColumn: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if let layer {
+                Picker("Layer", selection: layerSelection) {
+                    ForEach(profile.layers) { item in
+                        Text(layerTitle(item)).tag(Optional(item.id))
+                    }
+                }
+                .labelsHidden()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                HStack {
+                    Button("Add Layer") { model.addLayer(to: profile.id) }
+                        .disabled(profile.layers.count >= ProfileSanitizer.maxLayers)
+                    Button("Delete Layer") {
+                        if let id = layer.id as UUID? {
+                            model.deleteLayer(profileID: profile.id, layerID: id)
+                        }
+                    }
+                    .disabled(profile.layers.count < 2 || isBase(layer))
+                    Spacer(minLength: 8)
+                    Button("Add Binding") {
+                        model.editingLayerID = layer.id
+                        selectedButtonID = ControllerButton.a.id
+                        model.addBinding(profileID: profile.id, layerID: layer.id)
+                    }
+                    .disabled(layer.bindings.count >= ProfileSanitizer.maxBindings)
+                }
+                layerActivation(layer)
+                List(selection: $selectedButtonID) {
+                    ForEach(ControlSection.editor) { section in
+                        Section(section.title) {
+                            ForEach(section.buttons, id: \.id) { button in
+                                controlRow(button, in: layer)
+                            }
+                        }
+                    }
+                    if !extraButtons(in: layer).isEmpty {
+                        Section("Other") {
+                            ForEach(extraButtons(in: layer), id: \.id) { button in
+                                controlRow(button, in: layer)
+                            }
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                if !profile.validationWarnings().isEmpty {
+                    ForEach(profile.validationWarnings(), id: \.self) { warning in
+                        Text(warning)
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+    }
+
+    private var inspectorColumn: some View {
+        Group {
+            if let layer, let button = selectedControl(in: layer) {
+                inspector(layer: layer, button: button)
+            } else {
+                ContentUnavailableView("Select a Control", systemImage: "gamecontroller", description: Text("Choose a button, stick, or trigger to edit its action."))
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     private func binding(for button: ControllerButton, in layer: Layer) -> ButtonBinding? {
@@ -383,33 +422,17 @@ private struct BindingsTab: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 if let binding {
-                    HStack(spacing: 8) {
-                        Picker("Button", selection: Binding(
-                            get: { binding.button.id },
-                            set: { id in
-                                if id != binding.button.id, model.captureBindingID == binding.id {
-                                    model.disarmCapture()
-                                }
-                                model.update(profile.id) { profile in
-                                    guard let layerIndex = profile.layers.firstIndex(where: { $0.id == layer.id }),
-                                          let bindingIndex = profile.layers[layerIndex].bindings.firstIndex(where: { $0.id == binding.id }) else { return }
-                                    profile.layers[layerIndex].bindings[bindingIndex].button = ControllerButton(id: id)
-                                }
-                                selectedButtonID = id
-                            }
-                        )) {
-                            ForEach(ControllerButton.catalog, id: \.id) { item in
-                                Text(item.displayName).tag(item.id)
-                            }
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 8) {
+                            buttonPicker(binding, layer: layer)
+                            captureButton(binding, layer: layer)
                         }
-                        .frame(minWidth: 140)
-                        .layoutPriority(1)
-                        Button(model.captureBindingID == binding.id ? "Listening…" : "Capture") {
-                            model.editingLayerID = layer.id
-                            model.beginCapture(bindingID: binding.id)
+                        VStack(alignment: .leading, spacing: 8) {
+                            buttonPicker(binding, layer: layer)
+                            captureButton(binding, layer: layer)
                         }
-                        .fixedSize(horizontal: true, vertical: false)
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     ActionEditor(
                         action: binding.action,
                         shortcutNames: model.shortcutNames,
@@ -439,6 +462,36 @@ private struct BindingsTab: View {
                     )
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private func buttonPicker(_ binding: ButtonBinding, layer: Layer) -> some View {
+        Picker("Button", selection: Binding(
+            get: { binding.button.id },
+            set: { id in
+                if id != binding.button.id, model.captureBindingID == binding.id {
+                    model.disarmCapture()
+                }
+                model.update(profile.id) { profile in
+                    guard let layerIndex = profile.layers.firstIndex(where: { $0.id == layer.id }),
+                          let bindingIndex = profile.layers[layerIndex].bindings.firstIndex(where: { $0.id == binding.id }) else { return }
+                    profile.layers[layerIndex].bindings[bindingIndex].button = ControllerButton(id: id)
+                }
+                selectedButtonID = id
+            }
+        )) {
+            ForEach(ControllerButton.catalog, id: \.id) { item in
+                Text(item.displayName).tag(item.id)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func captureButton(_ binding: ButtonBinding, layer: Layer) -> some View {
+        Button(model.captureBindingID == binding.id ? "Listening…" : "Capture") {
+            model.editingLayerID = layer.id
+            model.beginCapture(bindingID: binding.id)
         }
     }
 
@@ -731,7 +784,7 @@ private struct RadialTab: View {
                 }
                 .padding(8)
             }
-            .frame(minWidth: 180, idealWidth: 220, maxWidth: 280)
+            .frame(minWidth: 140, idealWidth: 200, maxWidth: 240)
             .layoutPriority(1)
             if let menu {
                 Form {
@@ -801,7 +854,7 @@ private struct RadialTab: View {
                     .disabled(menu.items.count >= ProfileSanitizer.maxRadialItems)
                 }
                 .formStyle(.grouped)
-                .frame(minWidth: 280, maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
             } else {
                 ContentUnavailableView(
                     "No Radial Menu",
