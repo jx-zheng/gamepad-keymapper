@@ -76,37 +76,58 @@ struct EditorView: View {
     }
 
     private var sidebar: some View {
-        List(selection: $model.sidebar) {
-            Section("Profiles") {
-                ForEach(model.document.profiles) { profile in
-                    HStack(spacing: 8) {
-                        Text(profile.name)
-                            .lineLimit(1)
-                            .truncationMode(.tail)
-                            .layoutPriority(1)
-                        Spacer(minLength: 4)
-                        if profile.id == model.activeProfileID {
-                            Image(systemName: "dot.circle.fill")
-                                .foregroundStyle(Color.accentColor)
-                                .help("Receiving controller input")
+        VStack(spacing: 0) {
+            List(selection: $model.sidebar) {
+                Section("Profiles") {
+                    ForEach(model.document.profiles) { profile in
+                        HStack(spacing: 8) {
+                            Text(profile.name)
+                                .lineLimit(1)
+                                .truncationMode(.tail)
+                                .layoutPriority(1)
+                            Spacer(minLength: 4)
+                            if profile.id == model.activeProfileID {
+                                Image(systemName: "dot.circle.fill")
+                                    .foregroundStyle(Color.accentColor)
+                                    .help("Receiving controller input")
+                            }
                         }
+                        .tag(SidebarItem.profile(profile.id))
                     }
-                    .tag(SidebarItem.profile(profile.id))
+                }
+                Section {
+                    Button("Add Profile", action: model.addProfile)
+                        .disabled(model.document.profiles.count >= ProfileSanitizer.maxProfiles)
                 }
             }
-            Section {
-                Button("Add Profile", action: model.addProfile)
-                    .disabled(model.document.profiles.count >= ProfileSanitizer.maxProfiles)
+            .listStyle(.sidebar)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            Divider()
+            VStack(spacing: 2) {
+                sidebarAnchor(.devices, title: "Devices", systemImage: "gamecontroller")
+                sidebarAnchor(.permissions, title: "Permissions", systemImage: "lock.shield")
             }
-            Label("Devices", systemImage: "gamecontroller")
-                .lineLimit(1)
-                .tag(SidebarItem.devices)
-            Label("Permissions", systemImage: "lock.shield")
-                .lineLimit(1)
-                .tag(SidebarItem.permissions)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 8)
         }
-        .listStyle(.sidebar)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func sidebarAnchor(_ item: SidebarItem, title: String, systemImage: String) -> some View {
+        Button {
+            model.sidebar = item
+        } label: {
+            Label(title, systemImage: systemImage)
+                .lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 6)
+                .background(
+                    model.sidebar == item ? Color.accentColor.opacity(0.28) : Color.clear,
+                    in: RoundedRectangle(cornerRadius: 6)
+                )
+        }
+        .buttonStyle(.plain)
     }
 
     @ViewBuilder
@@ -294,6 +315,10 @@ private struct BindingsTab: View {
                 }
                 .labelsHidden()
                 .frame(maxWidth: .infinity, alignment: .leading)
+                Text("Hold or toggle a button to switch layers. Base is always on when no other layer is active. The button that shows a layer does not also run a Base action.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
                 HStack {
                     Button("Add Layer") { model.addLayer(to: profile.id) }
                         .disabled(profile.layers.count >= ProfileSanitizer.maxLayers)
@@ -509,38 +534,54 @@ private struct BindingsTab: View {
     }
 
     private func layerActivation(_ layer: Layer) -> some View {
-        HStack {
+        VStack(alignment: .leading, spacing: 6) {
             if case .base = layer.activation {
-                Text("Base layer is always on. Other layers replace it while they are active.")
+                Text("These bindings are always on, until a layer below replaces them.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             } else {
-                Picker("Activation", selection: activationKind(layer)) {
-                    Text("Hold").tag("hold")
-                    Text("Toggle").tag("toggle")
-                }
-                .frame(minWidth: 120, idealWidth: 160)
-                Picker("Modifier", selection: activatorBinding(layer)) {
-                    ForEach(ControllerButton.catalog, id: \.id) { button in
-                        Text(button.displayName).tag(button.id)
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 12) {
+                        layerModePicker(layer)
+                        layerButtonPicker(layer)
+                    }
+                    VStack(alignment: .leading, spacing: 8) {
+                        layerModePicker(layer)
+                        layerButtonPicker(layer)
                     }
                 }
-            }
-            Spacer()
-            if layer.activation.activator != nil {
-                Toggle("Fall through", isOn: Binding(
-                    get: { layer.allowsFallthrough },
-                    set: { value in
-                        model.update(profile.id) { profile in
-                            guard let index = profile.layers.firstIndex(where: { $0.id == layer.id }) else { return }
-                            profile.layers[index].allowsFallthrough = value
+                if layer.activation.activator != nil {
+                    Toggle("Unmapped buttons still use Base", isOn: Binding(
+                        get: { layer.allowsFallthrough },
+                        set: { value in
+                            model.update(profile.id) { profile in
+                                guard let index = profile.layers.firstIndex(where: { $0.id == layer.id }) else { return }
+                                profile.layers[index].allowsFallthrough = value
+                            }
                         }
-                    }
-                ))
-                .help("Unmapped buttons keep their base-layer action.")
+                    ))
+                    .help("When this is off, a button you did not map on this layer does nothing while the layer is showing.")
+                }
             }
         }
+    }
+
+    private func layerModePicker(_ layer: Layer) -> some View {
+        Picker("Show this layer", selection: activationKind(layer)) {
+            Text("While holding").tag("hold")
+            Text("Toggled").tag("toggle")
+        }
+        .frame(minWidth: 140, idealWidth: 180)
+    }
+
+    private func layerButtonPicker(_ layer: Layer) -> some View {
+        Picker("On button", selection: activatorBinding(layer)) {
+            ForEach(ControllerButton.catalog, id: \.id) { button in
+                Text(button.displayName).tag(button.id)
+            }
+        }
+        .help("This button only shows the layer. It does not also run a Base binding.")
     }
 
     private func activationKind(_ layer: Layer) -> Binding<String> {
@@ -579,11 +620,11 @@ private struct BindingsTab: View {
     private func layerTitle(_ layer: Layer) -> String {
         switch layer.activation {
         case .base:
-            return layer.name
+            return "\(layer.name) (always on)"
         case .hold(let button):
-            return "\(layer.name) — Hold \(button.displayName)"
+            return "\(layer.name) (while holding \(button.displayName))"
         case .toggle(let button):
-            return "\(layer.name) — Toggle \(button.displayName)"
+            return "\(layer.name) (toggled with \(button.displayName))"
         }
     }
 
@@ -771,36 +812,78 @@ private struct RadialTab: View {
     }
 
     var body: some View {
-        HSplitView {
-            VStack(alignment: .leading) {
+        Group {
+            if profile.radialMenus.isEmpty {
+                ContentUnavailableView {
+                    Label("No Radial Menu", systemImage: "circle.grid.cross")
+                } description: {
+                    Text("Hold a trigger, aim, then release to run an item. Press B to cancel.")
+                } actions: {
+                    Button("Add Radial Menu") { addMenu() }
+                        .buttonStyle(.borderedProminent)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                radialEditor
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onAppear { selectedMenu = menu?.id }
+    }
+
+    private var radialEditor: some View {
+        HStack(spacing: 0) {
+            VStack(spacing: 0) {
+                HStack {
+                    Button("Add Menu") { addMenu() }
+                        .disabled(profile.radialMenus.count >= ProfileSanitizer.maxRadialMenus)
+                    Spacer(minLength: 8)
+                    Button("Delete Menu") { deleteSelectedMenu() }
+                        .disabled(menu == nil)
+                }
+                .padding(12)
                 List(selection: $selectedMenu) {
                     ForEach(profile.radialMenus) { item in
-                        Text(item.name).tag(Optional(item.id))
+                        Text(item.name)
+                            .lineLimit(1)
+                            .tag(Optional(item.id))
                     }
                 }
-                HStack {
-                    Button("Add Menu") {
-                        model.update(profile.id) { profile in
-                            guard profile.radialMenus.count < ProfileSanitizer.maxRadialMenus else { return }
-                            let menu = RadialMenu(name: "Menu \(profile.radialMenus.count + 1)", trigger: .menu, selection: .dpad)
-                            profile.radialMenus.append(menu)
-                            selectedMenu = menu.id
-                        }
-                    }
-                    Button("Delete Menu") {
-                        guard let id = menu?.id else { return }
-                        model.update(profile.id) { profile in
-                            profile.radialMenus.removeAll { $0.id == id }
-                        }
-                    }
-                    .disabled(menu == nil)
-                }
-                .padding(8)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .frame(minWidth: 140, idealWidth: 200, maxWidth: 240)
-            .layoutPriority(1)
-            if let menu {
-                Form {
+            .frame(width: 220)
+            .frame(maxHeight: .infinity)
+            Divider()
+            ScrollView {
+                if let menu {
+                    radialForm(menu)
+                        .padding(16)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    private func addMenu() {
+        model.update(profile.id) { profile in
+            guard profile.radialMenus.count < ProfileSanitizer.maxRadialMenus else { return }
+            let menu = RadialMenu(name: "Menu \(profile.radialMenus.count + 1)", trigger: .menu, selection: .dpad)
+            profile.radialMenus.append(menu)
+            selectedMenu = menu.id
+        }
+    }
+
+    private func deleteSelectedMenu() {
+        guard let id = menu?.id else { return }
+        model.update(profile.id) { profile in
+            profile.radialMenus.removeAll { $0.id == id }
+        }
+        selectedMenu = profile.radialMenus.first { $0.id != id }?.id
+    }
+
+    private func radialForm(_ menu: RadialMenu) -> some View {
+        Form {
                     TextField("Name", text: Binding(
                         get: { menu.name },
                         set: { name in updateMenu(menu.id) { $0.name = name } }
@@ -865,18 +948,9 @@ private struct RadialTab: View {
                         }
                     }
                     .disabled(menu.items.count >= ProfileSanitizer.maxRadialItems)
-                }
-                .formStyle(.grouped)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            } else {
-                ContentUnavailableView(
-                    "No Radial Menu",
-                    systemImage: "circle.grid.cross",
-                    description: Text("Add a menu, then hold its trigger and aim with a stick or the D-pad.")
-                )
-            }
         }
-        .onAppear { selectedMenu = menu?.id }
+        .formStyle(.grouped)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func updateMenu(_ id: UUID, _ body: (inout RadialMenu) -> Void) {

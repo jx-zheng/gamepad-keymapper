@@ -8,7 +8,6 @@ enum SampleProfiles {
 
     static func desktop() -> Profile {
         let baseID = UUID(uuidString: "E4A1C0DE-0001-4000-8000-000000000002")!
-        let editID = UUID(uuidString: "E4A1C0DE-0001-4000-8000-000000000003")!
         let menuID = UUID(uuidString: "E4A1C0DE-0001-4000-8000-000000000004")!
 
         let base = Layer(
@@ -36,21 +35,6 @@ enum SampleProfiles {
                     .options,
                     .typeText("Hello from Gamepad Keymapper")
                 )
-            ]
-        )
-
-        let editing = Layer(
-            id: editID,
-            name: "Editing",
-            activation: .hold(.leftShoulder),
-            allowsFallthrough: true,
-            bindings: [
-                bind("E4A1C0DE-0001-4000-8000-000000000021", .a, .keyboard(.tap("c", modifiers: .command))),
-                bind("E4A1C0DE-0001-4000-8000-000000000022", .b, .keyboard(.tap("v", modifiers: .command))),
-                bind("E4A1C0DE-0001-4000-8000-000000000023", .x, .keyboard(.tap("x", modifiers: .command))),
-                bind("E4A1C0DE-0001-4000-8000-000000000024", .y, .keyboard(.tap("z", modifiers: .command))),
-                bind("E4A1C0DE-0001-4000-8000-000000000025", .dpadUp, .keyboard(.tap("pageUp"))),
-                bind("E4A1C0DE-0001-4000-8000-000000000026", .dpadDown, .keyboard(.tap("pageDown")))
             ]
         )
 
@@ -98,7 +82,7 @@ enum SampleProfiles {
             name: "Desktop",
             isDefault: true,
             bundleIdentifiers: [],
-            layers: [base, editing],
+            layers: [base],
             radialMenus: [radial],
             sticks: StickConfig(left: .mouse(sensitivity: 1080), right: .scroll(sensitivity: 360)),
             gyro: GyroSettings(

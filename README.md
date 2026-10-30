@@ -87,7 +87,6 @@ Desktop (the fallback):
 | R3 | Control-Up |
 | Options / − | Types “Hello from Gamepad Keymapper” |
 | Menu / + | Radial menu (TextEdit, Safari, System Settings, media, Spotlight, a snippet). Aim with the D-pad. |
-| Hold L / LB | Editing layer: Command-C/V/X/Z, Page Up, Page Down |
 | Left stick | Pointer |
 | Right stick | Scroll |
 | ZL / LT | Gyro pointer, off until you enable it |
@@ -140,8 +139,7 @@ Use this on a Mac before handing the build to someone else. `swift test` does no
 
 - [ ] Press and release of a held key (an arrow) presses and releases that key once.
 - [ ] A noisy press does not repeat the action inside the debounce window.
-- [ ] Hold L and the Editing layer replaces A/B/X/Y. Release L and the base actions return.
-- [ ] The layer button itself does not also type.
+- [ ] Add a layer that shows while a button is held. Its bindings replace Base until you release that button. The hold button itself does not also run a Base action.
 - [ ] Toggle a layer, press a face button, toggle it off, and confirm the base action is back.
 - [ ] With fall-through off, an unmapped button on that layer does nothing.
 
