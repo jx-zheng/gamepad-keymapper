@@ -1233,17 +1233,14 @@ private struct DevicesView: View {
             Text(controller.hasMotion ? "Motion: available" : "Motion: not reported by macOS")
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            if !controller.pressed.isEmpty {
-                Text("Held: \(controller.pressed.joined(separator: ", "))")
-                    .font(.caption)
-            }
             if !controller.elementNames.isEmpty {
                 Text("Inputs")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                let pressedIDs = Set(controller.pressed)
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 168), spacing: 8, alignment: .leading)], alignment: .leading, spacing: 8) {
                     ForEach(controller.elementNames, id: \.self) { name in
-                        inputChip(name)
+                        inputChip(name, pressedIDs: pressedIDs)
                     }
                 }
             }
@@ -1253,21 +1250,28 @@ private struct DevicesView: View {
         .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 12))
     }
 
-    private func inputChip(_ name: String) -> some View {
+    private func inputChip(_ name: String, pressedIDs: Set<String>) -> some View {
         let button = ControllerButton.catalog.first { $0.displayName == name } ?? ControllerButton(id: name)
+        let active = pressedIDs.contains(button.id)
         return HStack(spacing: 6) {
             ControlGlyph(button: button)
             Text(name)
                 .font(.caption)
                 .lineLimit(1)
                 .truncationMode(.tail)
+                .foregroundStyle(active ? Color.white : Color.primary)
         }
         .padding(.leading, 4)
         .padding(.trailing, 10)
         .padding(.vertical, 4)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .background(
+            active ? Color.accentColor : Color.primary.opacity(0.06),
+            in: RoundedRectangle(cornerRadius: 8, style: .continuous)
+        )
+        .animation(.easeInOut(duration: 0.12), value: active)
         .accessibilityElement(children: .combine)
+        .accessibilityValue(active ? "Pressed" : "")
     }
 
     /// `nil` when GameController has no charge to show. A lone Joy-Con usually reports
