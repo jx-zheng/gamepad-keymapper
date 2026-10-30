@@ -29,7 +29,10 @@ final class AppModel: ObservableObject {
     @Published var frontmostBundleID: String?
     @Published var frontmostName: String?
     @Published var activeProfileID: UUID?
+    /// True when System Settings has Accessibility enabled for this app. This is what hides the banner.
     @Published var accessibilityTrusted = false
+    /// True when `CGPreflightPostEventAccess` (or a successful request) says posts are allowed.
+    @Published var canPostEvents = false
     @Published var statusMessage: String?
     /// Last controller button that went down, whether or not macOS allowed the injected event.
     @Published var lastInputName: String?
@@ -176,7 +179,9 @@ final class AppModel: ObservableObject {
     }
 
     func refreshAccessibility(prompt: Bool) {
-        accessibilityTrusted = AccessibilityPermission.isTrusted(prompt: prompt)
+        let trust = AccessibilityPermission.current(prompt: prompt)
+        accessibilityTrusted = trust.accessibilityGranted
+        canPostEvents = trust.canPostEvents
         engine.invalidateTrust()
     }
 

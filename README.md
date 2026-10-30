@@ -34,15 +34,15 @@ Requirements: macOS 14 or later, and Xcode 15 or later.
 3. The app is a menu-bar item (`LSUIElement`). Open **Editor** from the menu if the window does not appear.
 4. On first launch, use **Open Accessibility Settings**, enable Gamepad Keymapper, then **Check Again**.
 
-The project signs locally with an ad-hoc identity (`CODE_SIGN_IDENTITY` is `-`) so Xcode can run it without a development team. The app target compiles the core sources directly, so the app does not import a separate module.
+Debug builds sign with the Apple Development identity for team `92X58CPS6M` (`Apple Development: k_zheng00@icloud.com`) so the Accessibility grant survives rebuilds. Ad-hoc signing (`CODE_SIGN_IDENTITY` is `-`, and no `DEVELOPMENT_TEAM`) is only the fallback when that certificate is not in the keychain. An ad-hoc rebuild changes the code signature, so macOS treats it as a different app and the old Accessibility row stops matching. The app target compiles the core sources directly, so the app does not import a separate module.
 
 ```bash
 xcodebuild -project GamepadKeymapper.xcodeproj -scheme GamepadKeymapper -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO build
 ```
 
-That command needs macOS and Xcode. It cannot be run in a Linux environment. `CODE_SIGNING_ALLOWED=NO` is the CI override. A local Run from Xcode uses the ad-hoc signature. Accessibility permission is tied to that signature. An ad-hoc rebuild can change it, so macOS may ask you to grant Accessibility again.
+That command needs macOS and Xcode. It cannot be run in a Linux environment. `CODE_SIGNING_ALLOWED=NO` is the CI override. A local Run from Xcode uses the Apple Development signature above. After you allow Accessibility, quit and reopen the app. macOS often ignores the new trust until the next launch.
 
-Release builds should enable the hardened runtime and sign with a Developer ID. Local runs stay ad-hoc so the project opens without a development team.
+Release builds should enable the hardened runtime and sign with a Developer ID. Without the development certificate, clear `DEVELOPMENT_TEAM` and set `CODE_SIGN_IDENTITY` to `-`.
 
 Logic tests do not need a Mac:
 

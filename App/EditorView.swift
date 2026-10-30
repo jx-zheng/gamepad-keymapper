@@ -1187,6 +1187,19 @@ private struct DevicesView: View {
 private struct PermissionsView: View {
     @EnvironmentObject private var model: AppModel
 
+    private var accessibilityStatus: String {
+        switch (model.accessibilityTrusted, model.canPostEvents) {
+        case (true, true):
+            return "Accessibility is on and posted events are allowed."
+        case (true, false):
+            return "Accessibility is on. The post-event check has not succeeded yet. Quit and reopen Gamepad Keymapper. Keys are still sent because Accessibility is granted. If they fail, the app was signed again and this build needs to be allowed."
+        case (false, true):
+            return "Posted events look allowed, but Accessibility is still off. Turn on Gamepad Keymapper, then quit and reopen."
+        case (false, false):
+            return "Accessibility is off, so keys and clicks are not sent. Turn it on, then quit and reopen Gamepad Keymapper. Shortcuts and app launch work without it."
+        }
+    }
+
     var body: some View {
         Form {
             Section("Accessibility") {
@@ -1194,7 +1207,7 @@ private struct PermissionsView: View {
                     model.accessibilityTrusted ? "Accessibility is on" : "Accessibility is off",
                     systemImage: model.accessibilityTrusted ? "checkmark.circle.fill" : "exclamationmark.circle"
                 )
-                Text("macOS requires Accessibility before this app can type or move the pointer. After you allow it, quit and reopen Gamepad Keymapper. Shortcuts and app launch work without it.")
+                Text(accessibilityStatus)
                     .foregroundStyle(.secondary)
                 HStack {
                     Button("Open Accessibility Settings") { model.openAccessibilitySettings() }

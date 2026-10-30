@@ -3,14 +3,30 @@ import ApplicationServices
 import Foundation
 
 enum AccessibilityPermission {
-    /// Both checks are required. The radial menu is in-app and works without them;
-    /// keyboard and mouse actions are posted with CGEvent and are dropped otherwise.
-    static func isTrusted(prompt: Bool) -> Bool {
+    private static var didRequestPostAccess = false
+
+    /// Accessibility (AX) and the post-event preflight are reported separately.
+    /// Injection is allowed when either one succeeds. See `AccessibilityTrust`.
+    static func current(prompt: Bool) -> AccessibilityTrust {
         let key = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
         let options = [key: prompt] as CFDictionary
-        let trusted = AXIsProcessTrustedWithOptions(options)
-        let canPost = CGPreflightPostEventAccess()
-        return trusted && canPost
+        let accessibilityGranted = AXIsProcessTrustedWithOptions(options)
+        var canPost = CGPreflightPostEventAccess()
+        // Ask once per launch when Accessibility is already on but the preflight is still false,
+        // so TCC can record this binary. A false preflight must not override a real AX grant.
+        if accessibilityGranted && !canPost && !didRequestPostAccess {
+            didRequestPostAccess = true
+            if CGRequestPostEventAccess() {
+                canPost = true
+            } else {
+                canPost = CGPreflightPostEventAccess()
+            }
+        }
+        return AccessibilityTrust(accessibilityGranted: accessibilityGranted, canPostEvents: canPost)
+    }
+
+    static func isTrusted(prompt: Bool) -> Bool {
+        current(prompt: prompt).allowsInjection
     }
 
     static func openSettings() {

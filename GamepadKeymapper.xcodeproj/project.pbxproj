@@ -12,6 +12,7 @@
 		624A8F936E0903B5DF7F6FC4 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A1C0DE000000000000000001 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		E7A9D1BC879CD1B1999130F0 /* ButtonDebouncer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ButtonDebouncer.swift; sourceTree = "<group>"; };
+		A7C0DE0000000000000000B1 /* AccessibilityTrust.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityTrust.swift; sourceTree = "<group>"; };
 		C463D273E1CB1D035B51923D /* ControllerButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControllerButton.swift; sourceTree = "<group>"; };
 		DE94DBDD4B9CC3DA75742216 /* GyroPointer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GyroPointer.swift; sourceTree = "<group>"; };
 		B767BB61AC34AA075A58C325 /* KeyCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyCatalog.swift; sourceTree = "<group>"; };
@@ -37,6 +38,7 @@
 		81E6E0052BDC3D0D2DED8D7E /* RadialOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RadialOverlay.swift; sourceTree = "<group>"; };
 		3ACB27D8B37173372709708A /* SystemServices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemServices.swift; sourceTree = "<group>"; };
 		FE8CA8BF7FEEFD3A8B1BE0AC /* ButtonDebouncer.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7A9D1BC879CD1B1999130F0 /* ButtonDebouncer.swift */; };
+		A7C0DE0000000000000000B2 /* AccessibilityTrust.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7C0DE0000000000000000B1 /* AccessibilityTrust.swift */; };
 		E70A9D1C6D5D198A2AB02349 /* ControllerButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = C463D273E1CB1D035B51923D /* ControllerButton.swift */; };
 		5EFE6F5DFB70E710169E052E /* GyroPointer.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE94DBDD4B9CC3DA75742216 /* GyroPointer.swift */; };
 		6CF0E9B69685678F7B4E05FE /* KeyCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = B767BB61AC34AA075A58C325 /* KeyCatalog.swift */; };
@@ -63,6 +65,7 @@
 		0AEED849893B5B381CE37C40 /* SystemServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ACB27D8B37173372709708A /* SystemServices.swift */; };
 		A1C0DE000000000000000002 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1C0DE000000000000000001 /* Assets.xcassets */; };
 		F612CD2E22E187AC48B5913C /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (
+				A7C0DE0000000000000000B2 /* AccessibilityTrust.swift in Sources */,
 				FE8CA8BF7FEEFD3A8B1BE0AC /* ButtonDebouncer.swift in Sources */,
 				E70A9D1C6D5D198A2AB02349 /* ControllerButton.swift in Sources */,
 				5EFE6F5DFB70E710169E052E /* GyroPointer.swift in Sources */,
@@ -94,6 +97,7 @@
 				A1C0DE000000000000000002 /* Assets.xcassets in Resources */,
 			); runOnlyForDeploymentPostprocessing = 0; };
 		FC8F5A85394B0D5FF7E93AFA /* GamepadKeymapperCore */ = {isa = PBXGroup; children = (
+				A7C0DE0000000000000000B1 /* AccessibilityTrust.swift */,
 				E7A9D1BC879CD1B1999130F0 /* ButtonDebouncer.swift */,
 				C463D273E1CB1D035B51923D /* ControllerButton.swift */,
 				DE94DBDD4B9CC3DA75742216 /* GyroPointer.swift */,
@@ -165,11 +169,13 @@
 			}; name = Release; };
 		A45358D7F57D12409C956205 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
 				CODE_SIGNING_ALLOWED = YES;
 				CODE_SIGNING_REQUIRED = NO;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 92X58CPS6M;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = NO;
 				GENERATE_INFOPLIST_FILE = NO;

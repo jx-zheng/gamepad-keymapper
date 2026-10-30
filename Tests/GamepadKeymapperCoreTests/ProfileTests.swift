@@ -202,6 +202,26 @@ final class ProfileTests: XCTestCase {
         XCTAssertThrowsError(try ProfileSanitizer.sanitize(ProfileDocument(profiles: profiles)))
     }
 
+    func testAccessibilityTrustDoesNotRequireBothChecks() {
+        let axOnly = AccessibilityTrust(accessibilityGranted: true, canPostEvents: false)
+        XCTAssertTrue(axOnly.allowsInjection)
+        XCTAssertFalse(axOnly.accessibilityIsOff)
+        XCTAssertEqual(axOnly.failure, .posting)
+
+        let postOnly = AccessibilityTrust(accessibilityGranted: false, canPostEvents: true)
+        XCTAssertTrue(postOnly.allowsInjection)
+        XCTAssertTrue(postOnly.accessibilityIsOff)
+        XCTAssertEqual(postOnly.failure, .accessibility)
+
+        let neither = AccessibilityTrust(accessibilityGranted: false, canPostEvents: false)
+        XCTAssertFalse(neither.allowsInjection)
+        XCTAssertEqual(neither.failure, .both)
+
+        let ready = AccessibilityTrust(accessibilityGranted: true, canPostEvents: true)
+        XCTAssertTrue(ready.allowsInjection)
+        XCTAssertNil(ready.failure)
+    }
+
     func testRadialGeometryCardinals() {
         XCTAssertEqual(RadialGeometry.sliceIndex(dx: 0, dy: 1, count: 4, deadzone: 0.2), 0)
         XCTAssertEqual(RadialGeometry.sliceIndex(dx: 1, dy: 0, count: 4, deadzone: 0.2), 1)
