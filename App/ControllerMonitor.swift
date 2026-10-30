@@ -490,5 +490,4 @@ private final class ControllerSession {
         if normalized.contains("right") { return .dpadRight }
         return nil
     }
-    }
 }
