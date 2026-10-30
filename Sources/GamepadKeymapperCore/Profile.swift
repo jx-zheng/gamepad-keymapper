@@ -351,6 +351,18 @@ struct Profile: Equatable, Hashable, Identifiable, Codable {
         return warnings
     }
 
+    /// Empty profile for Add Profile: Base only, no bindings and no radial menu.
+    static func blank(name: String, isDefault: Bool) -> Profile {
+        Profile(
+            name: name,
+            isDefault: isDefault,
+            layers: [Layer(name: "Base", activation: .base)],
+            radialMenus: [],
+            sticks: .digital,
+            gyro: .off
+        )
+    }
+
     /// A usable starter profile: clicks on the face buttons and arrow keys on the D-pad.
     static func starter(name: String, isDefault: Bool) -> Profile {
         let base = Layer(

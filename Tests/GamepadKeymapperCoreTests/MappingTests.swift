@@ -393,6 +393,39 @@ final class MappingTests: XCTestCase {
         XCTAssertFalse(ignored.contains(.updateRadial(0)))
     }
 
+    func testJoyConRightHorizontalMatchesPhysicalDirections() {
+        let right = JoyConOrientation.matching("Nintendo Switch Joy-Con (R)")
+        XCTAssertEqual(right, .right)
+        // Portrait left is physical down. Portrait up is physical left.
+        let down = right?.horizontalStick(x: -1, y: 0)
+        XCTAssertEqual(down?.x ?? 1, 0, accuracy: 0.001)
+        XCTAssertEqual(down?.y ?? 0, -1, accuracy: 0.001)
+        let left = right?.horizontalStick(x: 0, y: 1)
+        XCTAssertEqual(left?.x ?? 0, -1, accuracy: 0.001)
+        XCTAssertEqual(left?.y ?? 1, 0, accuracy: 0.001)
+        let up = right?.horizontalStick(x: 1, y: 0)
+        XCTAssertEqual(up?.x ?? 1, 0, accuracy: 0.001)
+        XCTAssertEqual(up?.y ?? 0, 1, accuracy: 0.001)
+        XCTAssertEqual(right?.remapDpad(.dpadLeft), .dpadDown)
+        XCTAssertEqual(right?.remapDpad(.dpadUp), .dpadLeft)
+        XCTAssertEqual(right?.remapDpad(.dpadDown), .dpadRight)
+        XCTAssertEqual(right?.remapDpad(.dpadRight), .dpadUp)
+        XCTAssertEqual(right?.remapDpad(.a), .a)
+    }
+
+    func testJoyConLeftIsTheOppositeTurn() {
+        let left = JoyConOrientation.matching("Joy-Con (L)")
+        XCTAssertEqual(left, .left)
+        let up = left?.horizontalStick(x: -1, y: 0)
+        XCTAssertEqual(up?.x ?? 1, 0, accuracy: 0.001)
+        XCTAssertEqual(up?.y ?? 0, 1, accuracy: 0.001)
+        XCTAssertEqual(left?.remapDpad(.dpadLeft), .dpadUp)
+        XCTAssertEqual(left?.remapDpad(.dpadUp), .dpadRight)
+        XCTAssertNil(JoyConOrientation.matching("Nintendo Switch Pro Controller"))
+        XCTAssertNil(JoyConOrientation.matching("Joy-Con (L/R)"))
+        XCTAssertNil(JoyConOrientation.matching("DualSense"))
+    }
+
     func testRadialStickDoesNotAlsoMoveThePointer() {
         var profile = Profile.starter(name: "Radial", isDefault: true)
         profile.sticks.left = .mouse(sensitivity: 2_000)

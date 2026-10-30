@@ -116,16 +116,17 @@ struct EditorView: View {
             List(selection: $model.sidebar) {
                 Section("Profiles") {
                     ForEach(model.document.profiles) { profile in
-                        HStack(spacing: 8) {
+                        HStack(spacing: 6) {
                             Text(profile.name)
                                 .lineLimit(1)
                                 .truncationMode(.tail)
                                 .layoutPriority(1)
                             Spacer(minLength: 4)
-                            if profile.id == model.activeProfileID {
-                                Image(systemName: "dot.circle.fill")
-                                    .foregroundStyle(Color.accentColor)
-                                    .help("Receiving controller input")
+                            if profile.isDefault {
+                                profileMark("Default")
+                            }
+                            if !profile.enabled {
+                                profileMark("Disabled")
                             }
                         }
                         .tag(SidebarItem.profile(profile.id))
@@ -141,6 +142,13 @@ struct EditorView: View {
             sidebarFooter
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func profileMark(_ title: String) -> some View {
+        Text(title)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
     }
 
     /// Same sidebar list style as Profiles, anchored to the bottom of the column.
@@ -187,6 +195,7 @@ struct EditorView: View {
 private struct ProfileEditor: View {
     @EnvironmentObject private var model: AppModel
     let profileID: UUID
+    @State private var confirmProfileDelete = false
 
     private var profile: Profile? {
         model.document.profiles.first { $0.id == profileID }
@@ -218,6 +227,14 @@ private struct ProfileEditor: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .alert("Delete “\(profile?.name ?? "this profile")”?", isPresented: $confirmProfileDelete) {
+            Button("Cancel", role: .cancel) {}
+            Button("Delete", role: .destructive) {
+                model.delete(profileID: profileID)
+            }
+        } message: {
+            Text("“\(profile?.name ?? "This profile")” will be removed, including its layers and bindings.")
+        }
     }
 
     private func profileHeader(_ profile: Profile) -> some View {
@@ -260,7 +277,7 @@ private struct ProfileEditor: View {
             }
             Button("Duplicate") { model.duplicate(profileID: profile.id) }
                 .disabled(model.document.profiles.count >= ProfileSanitizer.maxProfiles)
-            Button("Delete", role: .destructive) { model.delete(profileID: profile.id) }
+            Button("Delete", role: .destructive) { confirmProfileDelete = true }
                 .disabled(model.document.profiles.count < 2)
         }
 
@@ -297,6 +314,7 @@ private struct BindingsTab: View {
     let profile: Profile
     @State private var selectedButtonID: String?
     @State private var unmappedDraft = MapperAction.keyboard(.tap("space"))
+    @State private var confirmLayerDelete = false
 
     private var layer: Layer? {
         if let id = model.editingLayerID, let match = profile.layers.first(where: { $0.id == id }) {
@@ -337,6 +355,16 @@ private struct BindingsTab: View {
         .onChange(of: selectedButtonID) { _, _ in
             unmappedDraft = .keyboard(.tap("space"))
         }
+        .alert("Delete “\(layer?.name ?? "this layer")”?", isPresented: $confirmLayerDelete) {
+            Button("Cancel", role: .cancel) {}
+            Button("Delete", role: .destructive) {
+                if let id = layer?.id {
+                    model.deleteLayer(profileID: profile.id, layerID: id)
+                }
+            }
+        } message: {
+            Text("“\(layer?.name ?? "This layer")” and its bindings will be removed.")
+        }
     }
 
     private var controlColumn: some View {
@@ -357,9 +385,7 @@ private struct BindingsTab: View {
                     Button("Add Layer") { model.addLayer(to: profile.id) }
                         .disabled(profile.layers.count >= ProfileSanitizer.maxLayers)
                     Button("Delete Layer") {
-                        if let id = layer.id as UUID? {
-                            model.deleteLayer(profileID: profile.id, layerID: id)
-                        }
+                        confirmLayerDelete = true
                     }
                     .disabled(profile.layers.count < 2 || isBase(layer))
                     Spacer(minLength: 8)
@@ -838,6 +864,8 @@ private struct RadialTab: View {
     let profile: Profile
     @State private var selectedMenu: UUID?
     @State private var expandedSlice: UUID?
+    @State private var confirmMenuDelete = false
+    @State private var menuPendingDelete: UUID?
 
     private var menu: RadialMenu? {
         if let selectedMenu, let match = profile.radialMenus.first(where: { $0.id == selectedMenu }) {
@@ -864,6 +892,21 @@ private struct RadialTab: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onAppear { selectedMenu = menu?.id }
+        .alert(
+            "Delete “\(profile.radialMenus.first { $0.id == menuPendingDelete }?.name ?? "this menu")”?",
+            isPresented: $confirmMenuDelete
+        ) {
+            Button("Cancel", role: .cancel) { menuPendingDelete = nil }
+            Button("Delete", role: .destructive) {
+                let id = menuPendingDelete
+                menuPendingDelete = nil
+                if let id {
+                    deleteMenu(id)
+                }
+            }
+        } message: {
+            Text("This radial menu and its slices will be removed.")
+        }
     }
 
     private var radialEditor: some View {
@@ -876,7 +919,8 @@ private struct RadialTab: View {
                             .tag(Optional(item.id))
                             .contextMenu {
                                 Button("Delete", role: .destructive) {
-                                    deleteMenu(item.id)
+                                    menuPendingDelete = item.id
+                                    confirmMenuDelete = true
                                 }
                             }
                     }
@@ -1145,10 +1189,12 @@ private struct DevicesView: View {
                         .foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 12)
-                Label(batteryLabel(controller.battery), systemImage: "battery.100")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .labelStyle(.titleAndIcon)
+                if let percent = reportedBattery(controller.battery) {
+                    Label("Battery \(percent)", systemImage: "battery.100")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .labelStyle(.titleAndIcon)
+                }
             }
             Text(controller.hasMotion ? "Motion: available" : "Motion: not reported by macOS")
                 .font(.caption)
@@ -1190,9 +1236,11 @@ private struct DevicesView: View {
         .accessibilityElement(children: .combine)
     }
 
-    private func batteryLabel(_ value: String?) -> String {
-        guard let value, !value.isEmpty, value != "0%" else { return "Battery —" }
-        return "Battery \(value)"
+    /// `nil` when GameController has no charge to show. A lone Joy-Con usually reports
+    /// an unknown state or level 0, and that row stays hidden.
+    private func reportedBattery(_ value: String?) -> String? {
+        guard let value, !value.isEmpty, value != "0%" else { return nil }
+        return value
     }
 }
 

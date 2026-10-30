@@ -256,7 +256,7 @@ final class AppModel: ObservableObject {
 
     func addProfile() {
         guard document.profiles.count < ProfileSanitizer.maxProfiles else { return }
-        let profile = Profile.starter(name: "Profile \(document.profiles.count + 1)", isDefault: document.profiles.isEmpty)
+        let profile = Profile.blank(name: "Profile \(document.profiles.count + 1)", isDefault: document.profiles.isEmpty)
         document.profiles.append(profile)
         sidebar = .profile(profile.id)
         editingLayerID = profile.layers.first?.id

@@ -202,6 +202,20 @@ final class ProfileTests: XCTestCase {
         XCTAssertThrowsError(try ProfileSanitizer.sanitize(ProfileDocument(profiles: profiles)))
     }
 
+    func testBlankProfileHasNoSampleMappings() {
+        let profile = Profile.blank(name: "Profile 2", isDefault: false)
+        XCTAssertEqual(profile.name, "Profile 2")
+        XCTAssertFalse(profile.isDefault)
+        XCTAssertEqual(profile.layers.map(\.name), ["Base"])
+        XCTAssertEqual(profile.layers.first?.activation, .base)
+        XCTAssertEqual(profile.layers.first?.bindings.count, 0)
+        XCTAssertTrue(profile.radialMenus.isEmpty)
+        XCTAssertEqual(profile.sticks, .digital)
+        XCTAssertFalse(profile.gyro.enabled)
+        XCTAssertNotEqual(profile.id, SampleProfiles.desktop().id)
+        XCTAssertGreaterThan(SampleProfiles.desktop().layers[0].bindings.count, 0)
+    }
+
     func testAccessibilityTrustDoesNotRequireBothChecks() {
         let axOnly = AccessibilityTrust(accessibilityGranted: true, canPostEvents: false)
         XCTAssertTrue(axOnly.allowsInjection)

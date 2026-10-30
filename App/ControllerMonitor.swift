@@ -286,9 +286,15 @@ private final class ControllerSession {
         let profile = controller.physicalInputProfile
         let extended = controller.extendedGamepad
         let micro = controller.microGamepad
+        // Lock a lone Joy-Con to its portrait frame, then rotate into the horizontal grip.
+        // Leaving the system rotation on fights that correction and the hat names stay wrong.
+        let orientation = JoyConOrientation.matching(category)
+        if orientation != nil {
+            micro?.reportsAbsoluteDpadValues = true
+        }
 
         for (name, button) in profile.buttons {
-            bind(button, to: Self.logicalButton(forGCName: name))
+            bind(button, to: oriented(Self.logicalButton(forGCName: name), orientation))
         }
 
         var left = profile.dpads[GCInputLeftThumbstick] ?? extended?.leftThumbstick
@@ -305,18 +311,18 @@ private final class ControllerSession {
             }
         }
         if let hat, hat !== left, hat !== right {
-            bind(hat.up, to: .dpadUp)
-            bind(hat.down, to: .dpadDown)
-            bind(hat.left, to: .dpadLeft)
-            bind(hat.right, to: .dpadRight)
+            bind(hat.up, to: oriented(.dpadUp, orientation))
+            bind(hat.down, to: oriented(.dpadDown, orientation))
+            bind(hat.left, to: oriented(.dpadLeft, orientation))
+            bind(hat.right, to: oriented(.dpadRight, orientation))
         }
         if bound.isEmpty, let micro {
             bind(micro.buttonA, to: .a)
             bind(micro.buttonX, to: .x)
         }
 
-        watchStick(left, side: .left, directsDpad: leftDirectsDpad)
-        watchStick(right, side: .right, directsDpad: false)
+        watchStick(left, side: .left, directsDpad: leftDirectsDpad, orientation: orientation)
+        watchStick(right, side: .right, directsDpad: false, orientation: orientation)
         elementNames = bound.sorted().map { ControllerButton(id: $0).displayName }
         schedulePropertyRefresh()
     }
@@ -411,21 +417,31 @@ private final class ControllerSession {
         }
     }
 
-    private func watchStick(_ pad: GCControllerDirectionPad?, side: StickSide, directsDpad: Bool) {
+    private func watchStick(
+        _ pad: GCControllerDirectionPad?,
+        side: StickSide,
+        directsDpad: Bool,
+        orientation: JoyConOrientation?
+    ) {
         guard let pad else { return }
         dpads.append(pad)
         pad.valueChangedHandler = { [weak self] pad, x, y in
             guard let self else { return }
+            let corrected = orientation?.horizontalStick(x: Double(x), y: Double(y))
             self.owner?.enqueueStick(InputBatch.Stick(
                 sessionID: self.sessionID,
                 category: self.category,
                 side: side,
-                x: Double(x),
-                y: Double(y),
+                x: corrected?.x ?? Double(x),
+                y: corrected?.y ?? Double(y),
                 time: CACurrentMediaTime(),
                 directsDpad: directsDpad
             ))
         }
+    }
+
+    private func oriented(_ button: ControllerButton, _ orientation: JoyConOrientation?) -> ControllerButton {
+        orientation?.remapDpad(button) ?? button
     }
 
     private var cachedBattery: String?
@@ -450,7 +466,8 @@ private final class ControllerSession {
         switch battery.batteryState {
         case .charging, .discharging, .full:
             let level = battery.batteryLevel
-            // A lone Joy-Con often reports level 0 while the charge is simply unknown.
+            // A lone Joy-Con often has a battery object whose level stays 0. That is
+            // “not reported”, same as `.unknown` or a nil battery. Callers hide the row.
             guard level.isFinite, level > 0, level <= 1 else { return nil }
             let percent = Int((level * 100).rounded())
             return "\(percent)%"
