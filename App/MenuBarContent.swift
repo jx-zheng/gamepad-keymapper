@@ -1,6 +1,5 @@
 import AppKit
 import SwiftUI
-import GamepadKeymapperCore
 
 struct MenuBarContent: View {
     @EnvironmentObject private var model: AppModel

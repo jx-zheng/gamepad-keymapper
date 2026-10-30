@@ -1,6 +1,5 @@
 import AppKit
 import SwiftUI
-import GamepadKeymapperCore
 
 struct ActionEditor: View {
     let action: MapperAction
@@ -18,7 +17,7 @@ struct ActionEditor: View {
             }
             editor
             Button("Try Action") { onTest() }
-                .disabled(action.summary == "Open app" || action.summary == "Shortcut “”")
+                .disabled(!canTry(action))
         }
     }
 
@@ -195,6 +194,17 @@ struct ActionEditor: View {
         }
     }
 
+    private func canTry(_ action: MapperAction) -> Bool {
+        switch action {
+        case .launchApp(let launch):
+            return !launch.isEmpty
+        case .shortcut(let name):
+            return !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        default:
+            return true
+        }
+    }
+
     private var kindBinding: Binding<ActionKind> {
         Binding(
             get: { ActionKind(action) },
@@ -276,13 +286,37 @@ final class KeyCaptureNSView: NSView {
         window?.makeFirstResponder(self)
     }
 
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        guard window?.firstResponder === self else { return false }
+        record(event)
+        return true
+    }
+
     override func keyDown(with event: NSEvent) {
+        record(event)
+    }
+
+    private func record(_ event: NSEvent) {
         var modifiers = KeyModifiers()
         if event.modifierFlags.contains(.command) { modifiers.insert(.command) }
         if event.modifierFlags.contains(.shift) { modifiers.insert(.shift) }
         if event.modifierFlags.contains(.option) { modifiers.insert(.option) }
         if event.modifierFlags.contains(.control) { modifiers.insert(.control) }
-        if event.modifierFlags.contains(.function) { modifiers.insert(.function) }
+        // Arrows, function keys, and navigation keys report .function even when Fn is not held.
+        if event.modifierFlags.contains(.function), !Self.ignoresFunctionFlag(event.keyCode) {
+            modifiers.insert(.function)
+        }
         onKey?(event.keyCode, modifiers)
+    }
+
+    private static func ignoresFunctionFlag(_ keyCode: UInt16) -> Bool {
+        switch keyCode {
+        case 96, 97, 98, 99, 100, 101, 103, 109, 111, 118, 120, 122:
+            return true
+        case 115, 116, 117, 119, 121, 123, 124, 125, 126:
+            return true
+        default:
+            return false
+        }
     }
 }

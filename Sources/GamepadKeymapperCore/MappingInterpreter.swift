@@ -30,7 +30,6 @@ struct MappingInterpreter {
     private struct RadialSession: Equatable {
         var controller: String
         var menuID: UUID
-        var trigger: ControllerButton
         var selection: Int?
     }
 
@@ -188,39 +187,23 @@ struct MappingInterpreter {
             return effects
         }
 
-        var pair = sticks[controller] ?? StickPair()
         let mode = side == .left ? profile.sticks.left : profile.sticks.right
         var effects: [EngineEffect] = []
 
         switch mode {
         case .digital:
-            var digitalizer = side == .left ? pair.left : pair.right
-            digitalizer.deadzone = stickDeadzone
-            digitalizer.releaseZone = stickReleaseZone
-            let change = digitalizer.update(x: x, y: y, side: side)
-            if side == .left { pair.left = digitalizer } else { pair.right = digitalizer }
-            sticks[controller] = pair
-            for button in change.released {
-                effects += ingestButton(
-                    controller: controller,
-                    category: category,
-                    button: button,
-                    rawPressed: false,
-                    time: time,
-                    profile: profile
-                )
-            }
-            for button in change.pressed {
-                effects += ingestButton(
-                    controller: controller,
-                    category: category,
-                    button: button,
-                    rawPressed: true,
-                    time: time,
-                    profile: profile
-                )
-            }
+            effects += syncDigitalizer(
+                controller: controller,
+                category: category,
+                side: side,
+                x: x,
+                y: y,
+                time: time,
+                profile: profile,
+                emitPresses: true
+            )
         case .mouse(let sensitivity):
+            var pair = sticks[controller] ?? StickPair()
             effects += releaseLatchedStick(
                 controller: controller,
                 category: category,
@@ -238,6 +221,7 @@ struct MappingInterpreter {
                 ))
             }
         case .scroll(let sensitivity):
+            var pair = sticks[controller] ?? StickPair()
             effects += releaseLatchedStick(
                 controller: controller,
                 category: category,
@@ -275,8 +259,7 @@ struct MappingInterpreter {
         categories[controller] = nil
         sticks[controller] = nil
         debouncers = debouncers.filter { $0.key.controller != controller }
-        let samplePrefix = controller + "|"
-        lastStickSample = lastStickSample.filter { !$0.key.hasPrefix(samplePrefix) }
+        lastStickSample = lastStickSample.filter { !$0.key.hasPrefix(prefix) }
         return effects
     }
 
@@ -490,7 +473,7 @@ struct MappingInterpreter {
 
         if pressed {
             if let menu = profile.radialMenus.first(where: { $0.trigger.id == button.id }) {
-                radial = RadialSession(controller: controller, menuID: menu.id, trigger: button, selection: nil)
+                radial = RadialSession(controller: controller, menuID: menu.id, selection: nil)
                 var effects: [EngineEffect] = [.showRadial(menu, selection: nil)]
                 if let side = aimingStick(menu.selection) {
                     effects += releaseLatchedStick(

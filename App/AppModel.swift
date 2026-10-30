@@ -1,7 +1,6 @@
 import AppKit
 import Combine
 import Foundation
-import GamepadKeymapperCore
 import ServiceManagement
 import UniformTypeIdentifiers
 
@@ -45,6 +44,8 @@ final class AppModel: ObservableObject {
     private let frontmost = FrontmostAppMonitor()
     private var persistTask: Task<Void, Never>?
     private var pushTask: Task<Void, Never>?
+    /// True when the on-disk profile file could not be read, so autosave stays off.
+    @Published private(set) var savesDisabled = false
     private var suppressAutosave = false
     private var sleepObserver: NSObjectProtocol?
     private var activeObserver: NSObjectProtocol?
@@ -64,6 +65,7 @@ final class AppModel: ObservableObject {
         } catch {
             loadedDocument = SampleProfiles.document()
             suppressAutosave = true
+            savesDisabled = true
             alertMessage = "Couldn’t read saved profiles (\(error.localizedDescription)). The file on disk was left unchanged."
         }
         if loadedDocument.profiles.isEmpty {
@@ -87,7 +89,7 @@ final class AppModel: ObservableObject {
         frontmost.start()
         engine.start()
         refreshAccessibility(prompt: false)
-        pushProfile(immediate: true)
+        pushProfile()
         sleepObserver = NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.willSleepNotification,
             object: nil,
@@ -148,13 +150,13 @@ final class AppModel: ObservableObject {
 
     func pin(profileID: UUID) {
         settings.profileOverrideID = profileID
-        pushProfile(immediate: true)
+        pushProfile()
         schedulePersist()
     }
 
     func clearOverride() {
         settings.profileOverrideID = nil
-        pushProfile(immediate: true)
+        pushProfile()
         schedulePersist()
     }
 
@@ -277,7 +279,7 @@ final class AppModel: ObservableObject {
         update(profileID) { profile in
             guard let index = profile.layers.firstIndex(where: { $0.id == layerID }),
                   profile.layers[index].bindings.count < ProfileSanitizer.maxBindings else { return }
-            let binding = Binding(button: .a, action: .mouseClick(.left, clicks: 1))
+            let binding = ButtonBinding(button: .a, action: .mouseClick(.left, clicks: 1))
             profile.layers[index].bindings.append(binding)
             newID = binding.id
         }
@@ -391,8 +393,9 @@ final class AppModel: ObservableObject {
                 alertMessage = importWarnings.prefix(4).joined(separator: "\n")
             }
             suppressAutosave = false
+            savesDisabled = false
             persistNow()
-            pushProfile(immediate: true)
+            pushProfile()
         } catch {
             alertMessage = error.localizedDescription
         }
@@ -416,12 +419,13 @@ final class AppModel: ObservableObject {
         document = SampleProfiles.document()
         settings.profileOverrideID = nil
         suppressAutosave = false
+        savesDisabled = false
         if let first = document.profiles.first {
             sidebar = .profile(first.id)
             editingLayerID = first.layers.first?.id
         }
         persistNow()
-        pushProfile(immediate: true)
+        pushProfile()
     }
 
     func runningApps() -> [(name: String, bundleID: String)] {
@@ -436,7 +440,7 @@ final class AppModel: ObservableObject {
     private func noteFrontmost(bundle: String?, name: String?) {
         frontmostBundleID = bundle
         frontmostName = name
-        pushProfile(immediate: true)
+        pushProfile()
     }
 
     private func wireEngine() {
@@ -464,7 +468,7 @@ final class AppModel: ObservableObject {
         pushTask?.cancel()
         pushTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: 50_000_000)
-            await MainActor.run { self?.pushProfile(immediate: true) }
+            await MainActor.run { self?.pushProfile() }
         }
     }
 
@@ -485,7 +489,7 @@ final class AppModel: ObservableObject {
         }
     }
 
-    private func pushProfile(immediate: Bool) {
+    private func pushProfile() {
         let selected = ProfileSelector.select(
             from: document.profiles,
             frontmostBundleID: frontmostBundleID,
@@ -494,9 +498,6 @@ final class AppModel: ObservableObject {
         activeProfileID = selected?.id
         engine.setProfile(selected)
         pushTuning()
-        if !immediate {
-            schedulePush()
-        }
     }
 
     private func pushTuning() {

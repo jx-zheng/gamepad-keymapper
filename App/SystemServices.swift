@@ -1,7 +1,6 @@
 import AppKit
 import ApplicationServices
 import Foundation
-import GamepadKeymapperCore
 
 enum AccessibilityPermission {
     static func isTrusted(prompt: Bool) -> Bool {

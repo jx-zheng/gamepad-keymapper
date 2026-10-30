@@ -1,6 +1,6 @@
 import Foundation
-import GamepadKeymapperCore
 import os
+import QuartzCore
 
 /// Runs mapping off the main thread.
 ///
@@ -38,7 +38,7 @@ final class MappingEngine {
         }
         monitor.onTopology = { [weak self] in
             self?.queue.async {
-                self?.publishControllers(force: true)
+                self?.publishControllers()
             }
         }
         monitor.onDisconnected = { [weak self] sessionID in
@@ -78,6 +78,7 @@ final class MappingEngine {
 
     func setProfile(_ profile: Profile?) {
         queue.async {
+            self.lastMotionTime.removeAll()
             let changed = self.profile?.id != profile?.id
             self.profile = profile
             if changed {
@@ -108,7 +109,7 @@ final class MappingEngine {
             self.devicesVisible = visible
             if visible {
                 self.startUITimer()
-                self.publishControllers(force: true)
+                self.publishControllers()
             } else {
                 self.uiTimer?.cancel()
                 self.uiTimer = nil
@@ -182,7 +183,10 @@ final class MappingEngine {
         if mappingEnabled, profile.gyro.enabled {
             for sample in batch.motion {
                 let held = interpreter.heldButtonIDs(controller: sample.sessionID)
-                guard profile.gyro.activation.isActive(held: held) else { continue }
+                guard profile.gyro.activation.isActive(held: held) else {
+                    self.lastMotionTime[sample.sessionID] = nil
+                    continue
+                }
                 let previous = lastMotionTime[sample.sessionID] ?? sample.time
                 lastMotionTime[sample.sessionID] = sample.time
                 let dt = min(0.05, max(0, sample.time - previous))
@@ -198,6 +202,8 @@ final class MappingEngine {
                 ) else { continue }
                 effects.append(.pointerDelta(dx: delta.dx, dy: delta.dy))
             }
+        } else {
+            lastMotionTime.removeAll()
         }
         perform(effects)
     }
@@ -205,7 +211,7 @@ final class MappingEngine {
     private func handleDisconnect(_ sessionID: String) {
         lastMotionTime[sessionID] = nil
         perform(interpreter.clearController(sessionID))
-        publishControllers(force: true)
+        publishControllers()
     }
 
     private func perform(_ effects: [EngineEffect]) {
@@ -335,7 +341,7 @@ final class MappingEngine {
         let timer = DispatchSource.makeTimerSource(queue: queue)
         timer.schedule(deadline: .now() + .milliseconds(250), repeating: .milliseconds(250), leeway: .milliseconds(30))
         timer.setEventHandler { [weak self] in
-            self?.publishControllers(force: true)
+            self?.publishControllers()
         }
         uiTimer = timer
         timer.resume()
@@ -350,8 +356,7 @@ final class MappingEngine {
         }
     }
 
-    private func publishControllers(force: Bool) {
-        if !force && !devicesVisible { return }
+    private func publishControllers() {
         let snapshots = monitor.snapshots { [interpreter] sessionID in
             interpreter.heldButtonIDs(controller: sessionID).sorted()
         }

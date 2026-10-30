@@ -155,8 +155,8 @@ enum SampleProfiles {
         )
     }
 
-    private static func bind(_ id: String, _ button: ControllerButton, _ action: MapperAction) -> Binding {
-        Binding(
+    private static func bind(_ id: String, _ button: ControllerButton, _ action: MapperAction) -> ButtonBinding {
+        ButtonBinding(
             id: UUID(uuidString: id)!,
             button: button,
             action: action

@@ -190,7 +190,7 @@ extension LayerActivation: Codable {
     }
 }
 
-struct Binding: Equatable, Hashable, Identifiable, Codable {
+struct ButtonBinding: Equatable, Hashable, Identifiable, Codable {
     var id: UUID
     var button: ControllerButton
     var action: MapperAction
@@ -208,14 +208,14 @@ struct Layer: Equatable, Hashable, Identifiable, Codable {
     var activation: LayerActivation
     /// When false, a button with no binding on this layer does nothing instead of using a lower layer.
     var allowsFallthrough: Bool
-    var bindings: [Binding]
+    var bindings: [ButtonBinding]
 
     init(
         id: UUID = UUID(),
         name: String,
         activation: LayerActivation,
         allowsFallthrough: Bool = true,
-        bindings: [Binding] = []
+        bindings: [ButtonBinding] = []
     ) {
         self.id = id
         self.name = name
@@ -357,12 +357,12 @@ struct Profile: Equatable, Hashable, Identifiable, Codable {
             name: "Base",
             activation: .base,
             bindings: [
-                Binding(button: .a, action: .mouseClick(.left, clicks: 1)),
-                Binding(button: .b, action: .mouseClick(.right, clicks: 1)),
-                Binding(button: .dpadUp, action: .keyboard(.hold("upArrow"))),
-                Binding(button: .dpadDown, action: .keyboard(.hold("downArrow"))),
-                Binding(button: .dpadLeft, action: .keyboard(.hold("leftArrow"))),
-                Binding(button: .dpadRight, action: .keyboard(.hold("rightArrow")))
+                ButtonBinding(button: .a, action: .mouseClick(.left, clicks: 1)),
+                ButtonBinding(button: .b, action: .mouseClick(.right, clicks: 1)),
+                ButtonBinding(button: .dpadUp, action: .keyboard(.hold("upArrow"))),
+                ButtonBinding(button: .dpadDown, action: .keyboard(.hold("downArrow"))),
+                ButtonBinding(button: .dpadLeft, action: .keyboard(.hold("leftArrow"))),
+                ButtonBinding(button: .dpadRight, action: .keyboard(.hold("rightArrow")))
             ]
         )
         return Profile(

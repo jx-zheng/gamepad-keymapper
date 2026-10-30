@@ -144,7 +144,7 @@ enum ProfileSanitizer {
         }
     }
 
-    private static func sanitizeBinding(_ binding: inout Binding, warnings: inout [String]) {
+    private static func sanitizeBinding(_ binding: inout ButtonBinding, warnings: inout [String]) {
         binding.button = sanitizeButton(binding.button)
         sanitizeAction(&binding.action, warnings: &warnings)
     }

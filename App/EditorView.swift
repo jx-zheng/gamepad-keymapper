@@ -1,10 +1,32 @@
 import SwiftUI
-import GamepadKeymapperCore
 
 struct EditorView: View {
     @EnvironmentObject private var model: AppModel
 
     var body: some View {
+        editor
+            .safeAreaInset(edge: .top, spacing: 0) {
+                if model.savesDisabled {
+                    unsavedBanner
+                }
+            }
+    }
+
+    private var unsavedBanner: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(.orange)
+            Text("Profiles and settings are not being saved. The file on disk was left unchanged. Import a profile or restore the sample to start saving again.")
+                .font(.callout)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 8)
+            Button("Restore Sample") { model.resetToSample() }
+        }
+        .padding(12)
+        .background(Color.orange.opacity(0.15))
+    }
+
+    private var editor: some View {
         NavigationSplitView {
             sidebar
         } detail: {
@@ -13,6 +35,9 @@ struct EditorView: View {
         .navigationSplitViewStyle(.balanced)
         .frame(minWidth: 880, minHeight: 580)
         .onChange(of: model.sidebar) { _, item in
+            if model.captureBindingID != nil {
+                model.disarmCapture()
+            }
             model.engine.setDevicesVisible(item == .devices)
         }
         .alert("Gamepad Keymapper", isPresented: alertShown) {

@@ -34,11 +34,13 @@ Requirements: macOS 14 or later, and Xcode 15 or later.
 3. The app is a menu-bar item (`LSUIElement`). Open **Editor** from the menu if the window does not appear.
 4. On first launch, use **Open Accessibility Settings**, enable Gamepad Keymapper, then **Check Again**.
 
-The project is set to build without a development team (`CODE_SIGNING_ALLOWED` is off) so `xcodebuild` does not need a certificate:
+The project is set to build without a development team (`CODE_SIGNING_ALLOWED` is off) so `xcodebuild` does not need a certificate. The app target compiles the core sources directly, so the app does not import a separate module.
 
 ```bash
 xcodebuild -project GamepadKeymapper.xcodeproj -scheme GamepadKeymapper -destination 'platform=macOS' build
 ```
+
+That command needs macOS and Xcode. It cannot be run in a Linux environment.
 
 If Xcode asks you to sign the app, choose **Sign to Run Locally**. Accessibility permission is tied to the signed binary. Changing the signature means granting it again.
 

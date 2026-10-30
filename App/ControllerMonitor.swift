@@ -1,6 +1,6 @@
 import Foundation
 import GameController
-import GamepadKeymapperCore
+import QuartzCore
 
 struct ControllerSnapshot: Identifiable, Equatable {
     var id: String
@@ -65,6 +65,8 @@ final class ControllerMonitor: NSObject {
     }
 
     func start() {
+        // Menu-bar apps are not frontmost. Without this, GameController delivers no events.
+        GCController.shouldMonitorBackgroundEvents = true
         let center = NotificationCenter.default
         center.addObserver(self, selector: #selector(controllerConnected(_:)), name: .GCControllerDidConnect, object: nil)
         center.addObserver(self, selector: #selector(controllerDisconnected(_:)), name: .GCControllerDidDisconnect, object: nil)
@@ -386,6 +388,7 @@ private final class ControllerSession {
         case String(GCInputButtonMenu): return .menu
         case String(GCInputButtonOptions): return .options
         case String(GCInputButtonHome): return .home
+        case String(GCInputDualShockTouchpadButton): return .touchpad
         default:
             return ControllerButton.namedGCElement(name)
         }

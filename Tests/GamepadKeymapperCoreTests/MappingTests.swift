@@ -65,7 +65,7 @@ final class MappingTests: XCTestCase {
             name: "Top",
             activation: .hold(.rightShoulder),
             allowsFallthrough: true,
-            bindings: [Binding(button: .a, action: .keyboard(.tap("v", modifiers: .command)))]
+            bindings: [ButtonBinding(button: .a, action: .keyboard(.tap("v", modifiers: .command)))]
         ))
         var interpreter = MappingInterpreter(debounce: 0)
         _ = interpreter.ingestButton(
@@ -84,7 +84,7 @@ final class MappingTests: XCTestCase {
         let toggle = Layer(
             name: "Sticky",
             activation: .toggle(.rightShoulder),
-            bindings: [Binding(button: .a, action: .media(.mute))]
+            bindings: [ButtonBinding(button: .a, action: .media(.mute))]
         )
         var profile = layeredProfile(allowsFallthrough: true)
         profile.layers.append(toggle)
@@ -111,7 +111,7 @@ final class MappingTests: XCTestCase {
             name: "Match",
             isDefault: true,
             layers: [Layer(name: "Base", activation: .base, bindings: [
-                Binding(button: .a, action: .keyboard(.tap("c")))
+                ButtonBinding(button: .a, action: .keyboard(.tap("c")))
             ])]
         )
         var interpreter = MappingInterpreter(debounce: 0)
@@ -130,7 +130,7 @@ final class MappingTests: XCTestCase {
             name: "Clicks",
             isDefault: true,
             layers: [Layer(name: "Base", activation: .base, bindings: [
-                Binding(button: .a, action: .mouseClick(.left, clicks: 1))
+                ButtonBinding(button: .a, action: .mouseClick(.left, clicks: 1))
             ])]
         )
         var interpreter = MappingInterpreter(debounce: 0)
@@ -174,7 +174,7 @@ final class MappingTests: XCTestCase {
             name: "Desktop",
             isDefault: true,
             layers: [Layer(name: "Base", activation: .base, bindings: [
-                Binding(button: .a, action: .mouseClick(.left, clicks: 1))
+                ButtonBinding(button: .a, action: .mouseClick(.left, clicks: 1))
             ])]
         )
         let xcode = Profile(
@@ -182,7 +182,7 @@ final class MappingTests: XCTestCase {
             isDefault: false,
             bundleIdentifiers: ["com.apple.dt.Xcode"],
             layers: [Layer(name: "Base", activation: .base, bindings: [
-                Binding(button: .a, action: .keyboard(.tap("r", modifiers: .command)))
+                ButtonBinding(button: .a, action: .keyboard(.tap("r", modifiers: .command)))
             ])]
         )
         var interpreter = MappingInterpreter(debounce: 0)
@@ -210,7 +210,7 @@ final class MappingTests: XCTestCase {
             name: "Arrows",
             isDefault: true,
             layers: [Layer(name: "Base", activation: .base, bindings: [
-                Binding(button: .dpadLeft, action: .keyboard(.hold("leftArrow")))
+                ButtonBinding(button: .dpadLeft, action: .keyboard(.hold("leftArrow")))
             ])]
         )
         var interpreter = MappingInterpreter(debounce: 0)
@@ -287,7 +287,7 @@ final class MappingTests: XCTestCase {
         var profile = Profile.starter(name: "Radial", isDefault: true)
         profile.sticks.left = .digital
         profile.layers[0].bindings.append(
-            Binding(button: .leftStickUp, action: .keyboard(.hold("upArrow")))
+            ButtonBinding(button: .leftStickUp, action: .keyboard(.hold("upArrow")))
         )
         profile.radialMenus = [RadialMenu(
             name: "Apps",
@@ -419,7 +419,7 @@ final class MappingTests: XCTestCase {
             name: "Nudge",
             isDefault: true,
             layers: [Layer(name: "Base", activation: .base, bindings: [
-                Binding(button: .dpadUp, action: .mouseMove(dx: 0, dy: -600))
+                ButtonBinding(button: .dpadUp, action: .mouseMove(dx: 0, dy: -600))
             ])]
         )
         var interpreter = MappingInterpreter(debounce: 0)
@@ -488,15 +488,15 @@ final class MappingTests: XCTestCase {
             isDefault: true,
             layers: [
                 Layer(name: "Base", activation: .base, bindings: [
-                    Binding(button: .a, action: .keyboard(.tap("a"))),
-                    Binding(button: .b, action: .keyboard(.tap("b"))),
-                    Binding(button: .leftShoulder, action: .keyboard(.tap("x")))
+                    ButtonBinding(button: .a, action: .keyboard(.tap("a"))),
+                    ButtonBinding(button: .b, action: .keyboard(.tap("b"))),
+                    ButtonBinding(button: .leftShoulder, action: .keyboard(.tap("x")))
                 ]),
                 Layer(
                     name: "Edit",
                     activation: .hold(.leftShoulder),
                     allowsFallthrough: allowsFallthrough,
-                    bindings: [Binding(button: .a, action: .keyboard(.tap("c", modifiers: .command)))]
+                    bindings: [ButtonBinding(button: .a, action: .keyboard(.tap("c", modifiers: .command)))]
                 )
             ]
         )

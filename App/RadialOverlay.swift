@@ -1,7 +1,6 @@
 import AppKit
 import Foundation
 import SwiftUI
-import GamepadKeymapperCore
 
 final class RadialModel: ObservableObject {
     @Published var menu: RadialMenu?

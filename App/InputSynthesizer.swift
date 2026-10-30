@@ -1,7 +1,6 @@
 import AppKit
 import CoreGraphics
 import Foundation
-import GamepadKeymapperCore
 
 /// Posts keyboard, mouse, and media events for actions the user configured.
 ///
@@ -220,8 +219,19 @@ final class InputSynthesizer {
     private func postKey(_ code: CGKeyCode, down: Bool, flags: CGEventFlags) {
         let source = CGEventSource(stateID: .hidSystemState)
         guard let event = CGEvent(keyboardEventSource: source, virtualKey: code, keyDown: down) else { return }
-        event.flags = flags
+        event.flags = flags.union(heldModifierFlags())
         event.post(tap: .cghidEventTap)
+    }
+
+    /// Modifiers currently held by a controller chord, so a later Tab or click keeps Command/Shift.
+    private func heldModifierFlags() -> CGEventFlags {
+        var flags = CGEventFlags()
+        if (keyCounts[55] ?? 0) > 0 { flags.insert(.maskCommand) }
+        if (keyCounts[56] ?? 0) > 0 { flags.insert(.maskShift) }
+        if (keyCounts[58] ?? 0) > 0 { flags.insert(.maskAlternate) }
+        if (keyCounts[59] ?? 0) > 0 { flags.insert(.maskControl) }
+        if (keyCounts[63] ?? 0) > 0 { flags.insert(.maskSecondaryFn) }
+        return flags
     }
 
     private func mouse(_ kind: MouseButtonKind, down: Bool, clickState: Int) {
@@ -256,6 +266,7 @@ final class InputSynthesizer {
             mouseCursorPosition: location,
             mouseButton: button
         ) else { return }
+        event.flags = heldModifierFlags()
         event.setIntegerValueField(.mouseEventClickState, value: Int64(clickState))
         event.post(tap: .cghidEventTap)
     }
