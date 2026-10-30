@@ -202,6 +202,21 @@ final class ProfileTests: XCTestCase {
         XCTAssertThrowsError(try ProfileSanitizer.sanitize(ProfileDocument(profiles: profiles)))
     }
 
+    func testJoyConTriggerNamesMapToTriggersNotGenericElements() {
+        XCTAssertEqual(ControllerButton.standardShoulderOrTrigger(matching: "ZR"), .rightTrigger)
+        XCTAssertEqual(ControllerButton.standardShoulderOrTrigger(matching: "Button ZR"), .rightTrigger)
+        XCTAssertEqual(ControllerButton.standardShoulderOrTrigger(matching: "Right Trigger"), .rightTrigger)
+        XCTAssertEqual(ControllerButton.standardShoulderOrTrigger(matching: "zr.circle"), .rightTrigger)
+        XCTAssertEqual(ControllerButton.standardShoulderOrTrigger(matching: "R2"), .rightTrigger)
+        XCTAssertEqual(ControllerButton.standardShoulderOrTrigger(matching: "ZL"), .leftTrigger)
+        XCTAssertEqual(ControllerButton.standardShoulderOrTrigger(matching: "Left Trigger"), .leftTrigger)
+        XCTAssertEqual(ControllerButton.standardShoulderOrTrigger(matching: "L2"), .leftTrigger)
+        XCTAssertEqual(ControllerButton.standardShoulderOrTrigger(matching: "Right Shoulder"), .rightShoulder)
+        XCTAssertEqual(ControllerButton.standardShoulderOrTrigger(matching: "Left Shoulder"), .leftShoulder)
+        XCTAssertNil(ControllerButton.standardShoulderOrTrigger(matching: "Button A"))
+        XCTAssertNil(ControllerButton.standardShoulderOrTrigger(matching: "Direction Pad Up"))
+    }
+
     func testBlankProfileHasNoSampleMappings() {
         let profile = Profile.blank(name: "Profile 2", isDefault: false)
         XCTAssertEqual(profile.name, "Profile 2")

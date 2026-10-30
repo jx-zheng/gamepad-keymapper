@@ -55,6 +55,33 @@ struct ControllerButton: Hashable, Equatable, Codable {
         ControllerButton(id: "gc:\(name)")
     }
 
+    /// Shoulder and trigger names GameController uses besides the standard `GCInput…` constants.
+    ///
+    /// A lone Joy-Con often labels the trigger `ZR` or `ZL` (or an SF Symbol such as `zr.circle`)
+    /// instead of `Right Trigger`. Those still have to become `.rightTrigger` / `.leftTrigger`.
+    static func standardShoulderOrTrigger(matching name: String) -> ControllerButton? {
+        let normalized = name.lowercased()
+            .replacingOccurrences(of: "_", with: " ")
+            .replacingOccurrences(of: ".", with: " ")
+        if normalized.contains("zl") || normalized.contains("l2") || normalized.contains("left trigger") || normalized == "lt" {
+            return .leftTrigger
+        }
+        if normalized.contains("zr") || normalized.contains("r2") || normalized.contains("right trigger") || normalized == "rt" {
+            return .rightTrigger
+        }
+        if normalized.contains("left shoulder") || normalized.contains("l1") || normalized == "lb" {
+            return .leftShoulder
+        }
+        if normalized.contains("right shoulder") || normalized.contains("r1") || normalized == "rb" {
+            return .rightShoulder
+        }
+        return nil
+    }
+
+    var isAnalogTrigger: Bool {
+        id == Self.leftTrigger.id || id == Self.rightTrigger.id
+    }
+
     /// Buttons offered in the editor, in roughly physical order.
     static let catalog: [ControllerButton] = [
         .a, .b, .x, .y,

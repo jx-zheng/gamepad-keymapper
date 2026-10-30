@@ -256,7 +256,10 @@ private final class ControllerSession {
     private weak var owner: ControllerMonitor?
     private var buttons: [GCControllerButtonInput] = []
     private var dpads: [GCControllerDirectionPad] = []
+    private var axes: [GCControllerAxisInput] = []
     private var bound: Set<String> = []
+    /// Last edge sent for an analog trigger, so value and pressed callbacks share one press.
+    private var triggerLatched: [String: Bool] = [:]
     private var motionInstalled = false
     private let lock = NSLock()
     /// Serial queue GameController uses for this pad. Never the main queue.
@@ -294,8 +297,13 @@ private final class ControllerSession {
         }
 
         for (name, button) in profile.buttons {
-            bind(button, to: oriented(Self.logicalButton(forGCName: name), orientation))
+            let names = [name] + Self.elementNames(button)
+            bind(button, to: oriented(Self.bestButton(for: names, fallback: name), orientation))
         }
+        // Analog ZR/ZL often exist on the extended profile but are absent from `profile.buttons`.
+        // ConMapper still sees them there. Dedup keeps a button that was already bound.
+        bindExtendedControls(extended)
+        bindShoulderAndTriggerElements(in: profile)
 
         var left = profile.dpads[GCInputLeftThumbstick] ?? extended?.leftThumbstick
         let right = profile.dpads[GCInputRightThumbstick] ?? extended?.rightThumbstick
@@ -364,8 +372,11 @@ private final class ControllerSession {
         motionInstalled = false
         let buttons = self.buttons
         let dpads = self.dpads
+        let axes = self.axes
         self.buttons.removeAll()
         self.dpads.removeAll()
+        self.axes.removeAll()
+        self.triggerLatched.removeAll()
         lock.unlock()
         let controller = controller
         handlerQueue.async {
@@ -381,6 +392,9 @@ private final class ControllerSession {
             }
             for dpad in dpads {
                 dpad.valueChangedHandler = nil
+            }
+            for axis in axes {
+                axis.valueChangedHandler = nil
             }
         }
     }
@@ -399,22 +413,107 @@ private final class ControllerSession {
         return cachedHasMotion
     }
 
+    /// Shoulders and triggers from the extended profile, including ones missing from `profile.buttons`.
+    private func bindExtendedControls(_ extended: GCExtendedGamepad?) {
+        guard let extended else { return }
+        bind(extended.buttonA, to: .a)
+        bind(extended.buttonB, to: .b)
+        bind(extended.buttonX, to: .x)
+        bind(extended.buttonY, to: .y)
+        bind(extended.leftShoulder, to: .leftShoulder)
+        bind(extended.rightShoulder, to: .rightShoulder)
+        bind(extended.leftTrigger, to: .leftTrigger)
+        bind(extended.rightTrigger, to: .rightTrigger)
+        bind(extended.buttonMenu, to: .menu)
+        if let options = extended.buttonOptions {
+            bind(options, to: .options)
+        }
+        if let home = extended.buttonHome {
+            bind(home, to: .home)
+        }
+        if let click = extended.leftThumbstickButton {
+            bind(click, to: .leftStickClick)
+        }
+        if let click = extended.rightThumbstickButton {
+            bind(click, to: .rightStickClick)
+        }
+    }
+
+    /// Elements and axes whose names say ZL/ZR or Trigger, even when they are not dictionary buttons.
+    private func bindShoulderAndTriggerElements(in profile: GCPhysicalInputProfile) {
+        // Buttons first. An analog axis with a similar name must not claim ZR ahead of the real button.
+        for element in profile.elements {
+            guard let input = element as? GCControllerButtonInput,
+                  let button = Self.shoulderOrTrigger(in: Self.elementNames(element)) else { continue }
+            bind(input, to: button)
+        }
+        for element in profile.elements {
+            guard let axis = element as? GCControllerAxisInput,
+                  let button = Self.shoulderOrTrigger(in: Self.elementNames(element)),
+                  button.isAnalogTrigger else { continue }
+            bindAxis(axis, to: button)
+        }
+        for (name, axis) in profile.axes {
+            guard let button = ControllerButton.standardShoulderOrTrigger(matching: name), button.isAnalogTrigger else { continue }
+            bindAxis(axis, to: button)
+        }
+    }
+
     private func bind(_ input: GCControllerButtonInput, to button: ControllerButton) {
         guard bound.insert(button.id).inserted else { return }
         buttons.append(input)
         if button.id == ControllerButton.home.id || button.id == ControllerButton.options.id {
             input.preferredSystemGestureState = .disabled
         }
-        input.pressedChangedHandler = { [weak self] _, _, pressed in
+        let trigger = button.isAnalogTrigger
+        input.pressedChangedHandler = { [weak self] _, value, pressed in
             guard let self else { return }
-            self.owner?.enqueueEdge(InputBatch.Edge(
-                sessionID: self.sessionID,
-                category: self.category,
-                button: button,
-                pressed: pressed,
-                time: CACurrentMediaTime()
-            ))
+            if trigger {
+                self.emitTrigger(button, value: value, pressed: pressed)
+            } else {
+                self.emit(button, pressed: pressed)
+            }
         }
+        // ZR/ZL are analog. Some pads update `value` and never flip `pressed`.
+        if trigger {
+            input.valueChangedHandler = { [weak self] _, value, pressed in
+                self?.emitTrigger(button, value: value, pressed: pressed)
+            }
+        }
+    }
+
+    private func bindAxis(_ axis: GCControllerAxisInput, to button: ControllerButton) {
+        guard button.isAnalogTrigger, bound.insert(button.id).inserted else { return }
+        axes.append(axis)
+        axis.valueChangedHandler = { [weak self] _, value in
+            self?.emitTrigger(button, value: value, pressed: false)
+        }
+    }
+
+    private func emit(_ button: ControllerButton, pressed: Bool) {
+        owner?.enqueueEdge(InputBatch.Edge(
+            sessionID: sessionID,
+            category: category,
+            button: button,
+            pressed: pressed,
+            time: CACurrentMediaTime()
+        ))
+    }
+
+    /// Press at 0.25, release at 0.12, so a partial ZR pull still becomes one edge.
+    private func emitTrigger(_ button: ControllerButton, value: Float, pressed: Bool) {
+        let was = triggerLatched[button.id] ?? false
+        let down: Bool
+        if pressed || value >= 0.25 {
+            down = true
+        } else if value <= 0.12 {
+            down = false
+        } else {
+            down = was
+        }
+        guard down != was else { return }
+        triggerLatched[button.id] = down
+        emit(button, pressed: down)
     }
 
     private func watchStick(
@@ -476,7 +575,36 @@ private final class ControllerSession {
         }
     }
 
-    private static func logicalButton(forGCName name: String) -> ControllerButton {
+    private static func elementNames(_ element: GCControllerElement) -> [String] {
+        var names = Array(element.aliases)
+        if let name = element.localizedName { names.append(name) }
+        if let name = element.unmappedLocalizedName { names.append(name) }
+        if let name = element.sfSymbolsName { names.append(name) }
+        return names
+    }
+
+    /// Prefers a trigger alias over a shoulder alias when one element carries both.
+    private static func shoulderOrTrigger(in names: [String]) -> ControllerButton? {
+        var shoulder: ControllerButton?
+        for name in names {
+            guard let match = ControllerButton.standardShoulderOrTrigger(matching: name) else { continue }
+            if match.isAnalogTrigger { return match }
+            if shoulder == nil { shoulder = match }
+        }
+        return shoulder
+    }
+
+    private static func bestButton(for names: [String], fallback: String) -> ControllerButton {
+        var found: ControllerButton?
+        for name in names {
+            guard let match = knownButton(forName: name) else { continue }
+            if match.isAnalogTrigger { return match }
+            if found == nil { found = match }
+        }
+        return found ?? ControllerButton.namedGCElement(fallback)
+    }
+
+    private static func knownButton(forName name: String) -> ControllerButton? {
         switch name {
         case String(GCInputButtonA): return .a
         case String(GCInputButtonB): return .b
@@ -493,7 +621,7 @@ private final class ControllerSession {
         case String(GCInputButtonHome): return .home
         case String(GCInputDualShockTouchpadButton): return .touchpad
         default:
-            return Self.directionPadButton(name) ?? ControllerButton.namedGCElement(name)
+            return directionPadButton(name) ?? ControllerButton.standardShoulderOrTrigger(matching: name)
         }
     }
 
