@@ -442,12 +442,13 @@ private final class ControllerSession {
     /// Elements and axes whose names say ZL/ZR or Trigger, even when they are not dictionary buttons.
     private func bindShoulderAndTriggerElements(in profile: GCPhysicalInputProfile) {
         // Buttons first. An analog axis with a similar name must not claim ZR ahead of the real button.
-        for element in profile.elements {
+        // `elements` is a name → element dictionary, so the loop variable is the element, not the pair.
+        for (_, element) in profile.elements {
             guard let input = element as? GCControllerButtonInput,
                   let button = Self.shoulderOrTrigger(in: Self.elementNames(element)) else { continue }
             bind(input, to: button)
         }
-        for element in profile.elements {
+        for (_, element) in profile.elements {
             guard let axis = element as? GCControllerAxisInput,
                   let button = Self.shoulderOrTrigger(in: Self.elementNames(element)),
                   button.isAnalogTrigger else { continue }
