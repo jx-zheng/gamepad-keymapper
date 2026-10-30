@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Fails if the app grows a shell, a network client, an event tap, or a purchase flow.
+# Uses grep so CI does not depend on ripgrep.
 set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$root"
@@ -12,8 +13,7 @@ fail() {
 scan() {
   local pattern="$1"
   local message="$2"
-  if rg -n --glob '!Scripts/security-scan.sh' --glob '!**/README.md' "$pattern" App Sources >/dev/null; then
-    rg -n --glob '!Scripts/security-scan.sh' --glob '!**/README.md' "$pattern" App Sources >&2 || true
+  if grep -rnE --include='*.swift' "$pattern" App Sources; then
     fail "$message"
   fi
 }
@@ -26,12 +26,11 @@ scan 'CGEvent\.tapCreate|CGEventTap' 'event taps are not allowed; post events on
 scan '/bin/zsh|bin/bash|"/bin/sh"' 'shell execution is not allowed'
 scan 'NSAppleScript' 'arbitrary AppleScript is not allowed'
 
-if rg -n 'Process\(' App Sources | rg -v 'App/SystemServices.swift' >/dev/null; then
-  rg -n 'Process\(' App Sources >&2 || true
+if grep -rnE 'Process\(' App Sources | grep -v 'App/SystemServices.swift'; then
   fail 'Process is only allowed in SystemServices.swift'
 fi
 
-if ! rg -n '"/usr/bin/shortcuts"' App/SystemServices.swift >/dev/null; then
+if ! grep -q '"/usr/bin/shortcuts"' App/SystemServices.swift; then
   fail 'shortcuts must be launched by absolute path'
 fi
 

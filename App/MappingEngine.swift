@@ -122,6 +122,12 @@ final class MappingEngine {
         }
     }
 
+    func disarmCapture() {
+        queue.async {
+            self.interpreter.captureNextPress = false
+        }
+    }
+
     func releaseHeldInputs() {
         queue.async {
             self.perform(self.interpreter.endSustainedActions())

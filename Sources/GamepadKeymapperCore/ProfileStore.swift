@@ -44,17 +44,6 @@ struct ProfileStore {
     }
 
     private func writeAtomic(_ data: Data, to url: URL) throws {
-        let temporary = url.deletingLastPathComponent()
-            .appendingPathComponent(".\(url.lastPathComponent).\(UUID().uuidString).tmp")
-        try data.write(to: temporary, options: .atomic)
-        if FileManager.default.fileExists(atPath: url.path) {
-            try FileManager.default.removeItem(at: url)
-        }
-        do {
-            try FileManager.default.moveItem(at: temporary, to: url)
-        } catch {
-            try? FileManager.default.removeItem(at: temporary)
-            throw error
-        }
+        try data.write(to: url, options: .atomic)
     }
 }

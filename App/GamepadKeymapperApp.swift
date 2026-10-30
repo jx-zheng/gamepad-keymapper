@@ -66,6 +66,7 @@ private final class EditorWindowDelegate: NSObject, NSWindowDelegate {
     func windowWillClose(_ notification: Notification) {
         Task { @MainActor in
             model?.engine.setDevicesVisible(false)
+            model?.disarmCapture()
         }
     }
 }

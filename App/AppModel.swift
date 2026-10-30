@@ -199,6 +199,7 @@ final class AppModel: ObservableObject {
     }
 
     func addProfile() {
+        guard document.profiles.count < ProfileSanitizer.maxProfiles else { return }
         let profile = Profile.starter(name: "Profile \(document.profiles.count + 1)", isDefault: document.profiles.isEmpty)
         document.profiles.append(profile)
         sidebar = .profile(profile.id)
@@ -208,6 +209,7 @@ final class AppModel: ObservableObject {
     }
 
     func duplicate(profileID: UUID) {
+        guard document.profiles.count < ProfileSanitizer.maxProfiles else { return }
         guard let profile = document.profiles.first(where: { $0.id == profileID }) else { return }
         let copy = duplicated(profile)
         document.profiles.append(copy)
@@ -241,7 +243,10 @@ final class AppModel: ObservableObject {
     }
 
     func addLayer(to profileID: UUID) {
+        guard let existing = document.profiles.first(where: { $0.id == profileID }),
+              existing.layers.count < ProfileSanitizer.maxLayers else { return }
         update(profileID) { profile in
+            guard profile.layers.count < ProfileSanitizer.maxLayers else { return }
             let used = profile.layerActivatorIDs
             let activator: ControllerButton = used.contains(ControllerButton.leftShoulder.id) ? .options : .leftShoulder
             let layer = Layer(name: "Layer \(profile.layers.count + 1)", activation: .hold(activator))
@@ -251,6 +256,7 @@ final class AppModel: ObservableObject {
     }
 
     func deleteLayer(profileID: UUID, layerID: UUID) {
+        let capturingThisLayer = captureBindingID != nil && editingLayerID == layerID
         update(profileID) { profile in
             guard profile.layers.count > 1 else { return }
             profile.layers.removeAll { $0.id == layerID }
@@ -258,12 +264,19 @@ final class AppModel: ObservableObject {
                 editingLayerID = profile.layers.first?.id
             }
         }
+        if capturingThisLayer {
+            disarmCapture()
+        }
     }
 
     func addBinding(profileID: UUID, layerID: UUID) {
+        guard let existing = document.profiles.first(where: { $0.id == profileID }),
+              let layer = existing.layers.first(where: { $0.id == layerID }),
+              layer.bindings.count < ProfileSanitizer.maxBindings else { return }
         var newID: UUID?
         update(profileID) { profile in
-            guard let index = profile.layers.firstIndex(where: { $0.id == layerID }) else { return }
+            guard let index = profile.layers.firstIndex(where: { $0.id == layerID }),
+                  profile.layers[index].bindings.count < ProfileSanitizer.maxBindings else { return }
             let binding = Binding(button: .a, action: .mouseClick(.left, clicks: 1))
             profile.layers[index].bindings.append(binding)
             newID = binding.id
@@ -280,8 +293,13 @@ final class AppModel: ObservableObject {
             profile.layers[index].bindings.removeAll { $0.id == bindingID }
         }
         if captureBindingID == bindingID {
-            captureBindingID = nil
+            disarmCapture()
         }
+    }
+
+    func disarmCapture() {
+        captureBindingID = nil
+        engine.disarmCapture()
     }
 
     func beginCapture(bindingID: UUID) {
@@ -291,7 +309,7 @@ final class AppModel: ObservableObject {
 
     func applyCapture(_ button: ControllerButton) {
         guard let bindingID = captureBindingID, case .profile(let profileID) = sidebar, let layerID = editingLayerID else {
-            captureBindingID = nil
+            disarmCapture()
             return
         }
         update(profileID) { profile in
@@ -458,12 +476,10 @@ final class AppModel: ObservableObject {
     private func persistNow() {
         guard !suppressAutosave else { return }
         do {
-            let clean = try ProfileSanitizer.sanitize(document).document
-            let cleanSettings = ProfileSanitizer.sanitizeSettings(settings)
-            if clean != document { document = clean }
-            if cleanSettings != settings { settings = cleanSettings }
-            try store.saveDocument(clean)
-            try store.saveSettings(cleanSettings)
+            // Sanitize the bytes written to disk. Do not write that copy back into the
+            // live document, or a half-typed bundle id or name is trimmed mid-edit.
+            try store.saveDocument(document)
+            try store.saveSettings(settings)
         } catch {
             statusMessage = "Couldn’t save profiles."
         }

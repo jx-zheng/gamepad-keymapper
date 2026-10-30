@@ -404,7 +404,11 @@ struct MappingInterpreter {
                 radial = nil
                 return [.hideRadial]
             }
-            // Ignore other buttons from the controller that opened the menu.
+            // Other buttons do not start new actions while the menu is open,
+            // but a release must still end whatever that button was holding.
+            if !pressed, let action = openHolds.removeValue(forKey: holdKey(controller, button)) {
+                return [.actionEnded(action)]
+            }
             return []
         }
 

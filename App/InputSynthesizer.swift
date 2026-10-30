@@ -14,8 +14,23 @@ final class InputSynthesizer {
     private var pointerY = 0.0
     private var scrollX = 0.0
     private var scrollY = 0.0
-    private var keyboardGeneration = 0
+    private var nextKeyboardToken = 0
+    private var keyboardRuns: [KeyboardRun] = []
     private let queue: DispatchQueue
+
+    /// One in-flight keyboard action. Cancelling it does not cancel other actions.
+    private final class KeyboardRun {
+        let token: Int
+        let command: KeyboardCommand
+        var cancelled = false
+        /// Key codes this action currently holds, one entry per press, so release uses the ref count.
+        var held: [CGKeyCode] = []
+
+        init(token: Int, command: KeyboardCommand) {
+            self.token = token
+            self.command = command
+        }
+    }
 
     init(queue: DispatchQueue) {
         self.queue = queue
@@ -49,8 +64,8 @@ final class InputSynthesizer {
 
     func end(_ action: MapperAction) {
         switch action {
-        case .keyboard:
-            endKeyboard()
+        case .keyboard(let command):
+            endKeyboard(command)
         case .mouseClick(let button, let clicks) where clicks <= 1:
             mouse(button, down: false, clickState: 1)
         default:
@@ -70,11 +85,12 @@ final class InputSynthesizer {
         let stepY = min(400, max(-400, wholeY))
         guard let source = CGEvent(source: nil) else { return }
         let next = clampToDisplays(CGPoint(x: source.location.x + stepX, y: source.location.y + stepY))
+        let (eventType, button) = dragEvent
         guard let event = CGEvent(
             mouseEventSource: nil,
-            mouseType: .mouseMoved,
+            mouseType: eventType,
             mouseCursorPosition: next,
-            mouseButton: .left
+            mouseButton: button
         ) else { return }
         event.post(tap: .cghidEventTap)
     }
@@ -99,7 +115,10 @@ final class InputSynthesizer {
     }
 
     func releaseAll() {
-        keyboardGeneration += 1
+        for run in keyboardRuns {
+            run.cancelled = true
+        }
+        keyboardRuns.removeAll()
         for code in keyCounts.keys {
             postKey(code, down: false, flags: [])
         }
@@ -110,36 +129,50 @@ final class InputSynthesizer {
         mouseButtons.removeAll()
     }
 
+    private var dragEvent: (CGEventType, CGMouseButton) {
+        if mouseButtons.contains(.left) { return (.leftMouseDragged, .left) }
+        if mouseButtons.contains(.right) { return (.rightMouseDragged, .right) }
+        if mouseButtons.contains(.center) { return (.otherMouseDragged, .center) }
+        return (.mouseMoved, .left)
+    }
+
     private func beginKeyboard(_ command: KeyboardCommand) {
-        keyboardGeneration += 1
-        let token = keyboardGeneration
-        let steps = Array(command.steps.prefix(8))
-        run(steps: steps, holdLast: command.holdLast, index: 0, token: token)
+        nextKeyboardToken += 1
+        let run = KeyboardRun(token: nextKeyboardToken, command: command)
+        keyboardRuns.append(run)
+        runSteps(run, steps: Array(command.steps.prefix(8)), holdLast: command.holdLast, index: 0)
     }
 
-    private func endKeyboard() {
-        keyboardGeneration += 1
-        releaseAllKeys()
+    private func endKeyboard(_ command: KeyboardCommand) {
+        guard let index = keyboardRuns.firstIndex(where: { $0.command == command && !$0.cancelled }) else { return }
+        let run = keyboardRuns.remove(at: index)
+        run.cancelled = true
+        for code in run.held.reversed() {
+            releaseKey(code, flags: [])
+        }
+        run.held.removeAll()
     }
 
-    private func run(steps: [KeyStep], holdLast: Bool, index: Int, token: Int) {
-        guard token == keyboardGeneration else { return }
+    private func runSteps(_ run: KeyboardRun, steps: [KeyStep], holdLast: Bool, index: Int) {
+        guard !run.cancelled, run.token > 0 else { return }
         if index >= steps.count {
             return
         }
         let isLast = index == steps.count - 1
         if holdLast && isLast {
-            holdDown(steps[index])
+            holdDown(steps[index], run: run)
             return
         }
         tap(steps[index])
         let delay = min(2_000, max(0, steps[index].delayMilliseconds))
         let next = index + 1
         if delay == 0 {
-            run(steps: steps, holdLast: holdLast, index: next, token: token)
+            runSteps(run, steps: steps, holdLast: holdLast, index: next)
         } else {
-            queue.asyncAfter(deadline: .now() + .milliseconds(delay)) { [weak self] in
-                self?.run(steps: steps, holdLast: holdLast, index: next, token: token)
+            let token = run.token
+            queue.asyncAfter(deadline: .now() + .milliseconds(delay)) { [weak self, weak run] in
+                guard let self, let run, !run.cancelled, run.token == token else { return }
+                self.runSteps(run, steps: steps, holdLast: holdLast, index: next)
             }
         }
     }
@@ -153,17 +186,14 @@ final class InputSynthesizer {
         for code in modifiers.reversed() { releaseKey(code, flags: flags) }
     }
 
-    private func holdDown(_ step: KeyStep) {
+    private func holdDown(_ step: KeyStep, run: KeyboardRun) {
         let flags = cgFlags(step.modifiers)
-        for code in modifierCodes(step.modifiers) { pressKey(code, flags: flags) }
-        pressKey(step.keyCode, flags: flags)
-    }
-
-    private func releaseAllKeys() {
-        for code in keyCounts.keys.sorted() {
-            postKey(code, down: false, flags: [])
+        for code in modifierCodes(step.modifiers) {
+            pressKey(code, flags: flags)
+            run.held.append(code)
         }
-        keyCounts.removeAll()
+        pressKey(step.keyCode, flags: flags)
+        run.held.append(step.keyCode)
     }
 
     private func pressKey(_ code: CGKeyCode, flags: CGEventFlags) {

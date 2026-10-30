@@ -53,6 +53,7 @@ struct EditorView: View {
             }
             Section {
                 Button("Add Profile", action: model.addProfile)
+                    .disabled(model.document.profiles.count >= ProfileSanitizer.maxProfiles)
             }
             Section("Library") {
                 Label("Devices", systemImage: "gamecontroller")
@@ -162,6 +163,7 @@ private struct ProfileEditor: View {
                 set: { isDefault in if isDefault { model.makeDefault(profile.id) } }
             ))
             Button("Duplicate") { model.duplicate(profileID: profile.id) }
+                .disabled(model.document.profiles.count >= ProfileSanitizer.maxProfiles)
             Button("Delete", role: .destructive) { model.delete(profileID: profile.id) }
                 .disabled(model.document.profiles.count < 2)
         }
@@ -193,6 +195,7 @@ private struct BindingsTab: View {
                     .labelsHidden()
                     HStack {
                         Button("Add Layer") { model.addLayer(to: profile.id) }
+                            .disabled(profile.layers.count >= ProfileSanitizer.maxLayers)
                         Button("Delete Layer") {
                             if let id = layer.id as UUID? {
                                 model.deleteLayer(profileID: profile.id, layerID: id)
@@ -204,6 +207,7 @@ private struct BindingsTab: View {
                             model.editingLayerID = layer.id
                             model.addBinding(profileID: profile.id, layerID: layer.id)
                         }
+                        .disabled(layer.bindings.count >= ProfileSanitizer.maxBindings)
                     }
                     layerActivation(layer)
                     List(selection: $selectedBinding) {
@@ -263,7 +267,12 @@ private struct BindingsTab: View {
     private var layerSelection: Binding<UUID?> {
         Binding(
             get: { layer?.id },
-            set: { model.editingLayerID = $0 }
+            set: { newID in
+                if newID != model.editingLayerID, model.captureBindingID != nil {
+                    model.disarmCapture()
+                }
+                model.editingLayerID = newID
+            }
         )
     }
 
@@ -276,6 +285,9 @@ private struct BindingsTab: View {
                     Picker("Button", selection: Binding(
                         get: { binding.button.id },
                         set: { id in
+                            if id != binding.button.id, model.captureBindingID == binding.id {
+                                model.disarmCapture()
+                            }
                             model.update(profile.id) { profile in
                                 guard let layerIndex = profile.layers.firstIndex(where: { $0.id == layer.id }),
                                       let bindingIndex = profile.layers[layerIndex].bindings.firstIndex(where: { $0.id == binding.id }) else { return }

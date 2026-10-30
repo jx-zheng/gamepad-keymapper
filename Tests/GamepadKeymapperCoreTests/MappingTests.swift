@@ -284,6 +284,20 @@ final class MappingTests: XCTestCase {
         )
     }
 
+    func testRadialReleaseEndsHeldAction() {
+        let profile = SampleProfiles.desktop()
+        var interpreter = MappingInterpreter(debounce: 0)
+        XCTAssertEqual(
+            interpreter.ingestButton(controller: "c", category: nil, button: .a, rawPressed: true, time: 0, profile: profile),
+            [.actionBegan(.mouseClick(.left, clicks: 1))]
+        )
+        _ = interpreter.ingestButton(controller: "c", category: nil, button: .menu, rawPressed: true, time: 0.1, profile: profile)
+        XCTAssertEqual(
+            interpreter.ingestButton(controller: "c", category: nil, button: .a, rawPressed: false, time: 0.2, profile: profile),
+            [.actionEnded(.mouseClick(.left, clicks: 1))]
+        )
+    }
+
     func testRadialCancelAndEmptySelection() {
         let profile = SampleProfiles.desktop()
         var interpreter = MappingInterpreter(debounce: 0)

@@ -285,6 +285,9 @@ private final class ControllerSession {
         guard enabled != motionInstalled else { return }
         motionInstalled = enabled
         guard let motion = controller.motion else { return }
+        if motion.sensorsRequireManualActivation {
+            motion.sensorsActive = enabled
+        }
         if enabled {
             motion.valueChangedHandler = { [weak self] motion in
                 guard let self, motion.hasAttitudeAndRotationRate else { return }
@@ -311,7 +314,12 @@ private final class ControllerSession {
         self.buttons.removeAll()
         self.dpads.removeAll()
         lock.unlock()
-        motion?.valueChangedHandler = nil
+        if let motion {
+            if motion.sensorsRequireManualActivation {
+                motion.sensorsActive = false
+            }
+            motion.valueChangedHandler = nil
+        }
         for button in buttons {
             button.pressedChangedHandler = nil
             button.valueChangedHandler = nil
