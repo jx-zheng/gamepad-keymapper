@@ -29,11 +29,14 @@ struct EditorView: View {
     private var editor: some View {
         NavigationSplitView {
             sidebar
+                .layoutPriority(1)
+                .navigationSplitViewColumnWidth(min: 220, ideal: 248, max: 320)
         } detail: {
             detail
+                .navigationSplitViewColumnWidth(min: 640, ideal: 900)
         }
         .navigationSplitViewStyle(.balanced)
-        .frame(minWidth: 880, minHeight: 580)
+        .frame(minWidth: 960, minHeight: 620)
         .onChange(of: model.sidebar) { _, item in
             if model.captureBindingID != nil {
                 model.disarmCapture()
@@ -64,9 +67,12 @@ struct EditorView: View {
         List(selection: $model.sidebar) {
             Section("Profiles") {
                 ForEach(model.document.profiles) { profile in
-                    HStack {
+                    HStack(spacing: 8) {
                         Text(profile.name)
-                        Spacer()
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                            .layoutPriority(1)
+                        Spacer(minLength: 4)
                         if profile.id == model.activeProfileID {
                             Image(systemName: "dot.circle.fill")
                                 .foregroundStyle(Color.accentColor)
@@ -82,20 +88,19 @@ struct EditorView: View {
             }
             Section("Library") {
                 Label("Devices", systemImage: "gamecontroller")
+                    .lineLimit(1)
                     .tag(SidebarItem.devices)
                 Label("Permissions", systemImage: "lock.shield")
+                    .lineLimit(1)
                     .tag(SidebarItem.permissions)
             }
         }
         .listStyle(.sidebar)
-        .navigationSplitViewColumnWidth(min: 200, ideal: 230, max: 280)
     }
 
     @ViewBuilder
     private var detail: some View {
         VStack(spacing: 0) {
-            header
-            Divider()
             switch model.sidebar {
             case .profile(let id):
                 if model.document.profiles.contains(where: { $0.id == id }) {
@@ -111,23 +116,6 @@ struct EditorView: View {
         }
     }
 
-    private var header: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "gamecontroller.fill")
-                .foregroundStyle(Color.accentColor)
-            Text("All features are included. Nothing is locked, trialed, or sold.")
-                .font(.callout)
-            Spacer()
-            if let name = model.frontmostName {
-                Text(name)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .background(.bar)
-    }
 }
 
 private struct ProfileEditor: View {
@@ -166,19 +154,30 @@ private struct ProfileEditor: View {
     }
 
     private func profileHeader(_ profile: Profile) -> some View {
-        HStack(alignment: .firstTextBaseline) {
-            VStack(alignment: .leading, spacing: 2) {
-                TextField("Profile name", text: Binding(
-                    get: { profile.name },
-                    set: { name in model.update(profile.id) { $0.name = name } }
-                ))
-                .font(.title2)
-                .textFieldStyle(.plain)
-                Text(profile.isDefault ? "Fallback when no app-specific profile matches." : "Used when one of its apps is frontmost.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            Spacer()
+        ViewThatFits(in: .horizontal) {
+            profileHeaderRow(profile, stacksControls: false)
+            profileHeaderRow(profile, stacksControls: true)
+        }
+        .padding(16)
+    }
+
+    private func profileHeaderRow(_ profile: Profile, stacksControls: Bool) -> some View {
+        let title = VStack(alignment: .leading, spacing: 2) {
+            TextField("Profile name", text: Binding(
+                get: { profile.name },
+                set: { name in model.update(profile.id) { $0.name = name } }
+            ))
+            .font(.title2)
+            .textFieldStyle(.plain)
+            Text(profile.isDefault ? "Fallback when no app-specific profile matches." : "Used when one of its apps is frontmost.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(minWidth: 180, alignment: .leading)
+        .layoutPriority(1)
+
+        let controls = HStack(spacing: 10) {
             Toggle("Enabled", isOn: Binding(
                 get: { profile.enabled },
                 set: { enabled in model.update(profile.id) { $0.enabled = enabled } }
@@ -192,7 +191,22 @@ private struct ProfileEditor: View {
             Button("Delete", role: .destructive) { model.delete(profileID: profile.id) }
                 .disabled(model.document.profiles.count < 2)
         }
-        .padding(16)
+        .fixedSize(horizontal: true, vertical: false)
+
+        return Group {
+            if stacksControls {
+                VStack(alignment: .leading, spacing: 8) {
+                    title
+                    controls
+                }
+            } else {
+                HStack(alignment: .firstTextBaseline, spacing: 16) {
+                    title
+                    Spacer(minLength: 8)
+                    controls
+                }
+            }
+        }
     }
 }
 
@@ -237,17 +251,23 @@ private struct BindingsTab: View {
                     layerActivation(layer)
                     List(selection: $selectedBinding) {
                         ForEach(layer.bindings) { binding in
-                            HStack {
+                            HStack(spacing: 8) {
                                 Text(binding.button.displayName)
-                                    .frame(width: 170, alignment: .leading)
+                                    .lineLimit(1)
+                                    .truncationMode(.tail)
+                                    .frame(minWidth: 96, idealWidth: 140, maxWidth: 180, alignment: .leading)
+                                    .layoutPriority(1)
                                 Text(binding.action.summary)
                                     .foregroundStyle(.secondary)
                                     .lineLimit(1)
-                                Spacer()
+                                    .truncationMode(.tail)
+                                Spacer(minLength: 0)
                                 if model.captureBindingID == binding.id {
                                     Text("Press a button…")
                                         .font(.caption)
                                         .foregroundStyle(Color.accentColor)
+                                        .lineLimit(1)
+                                        .fixedSize(horizontal: true, vertical: false)
                                 }
                             }
                             .tag(Optional(binding.id))
@@ -269,7 +289,8 @@ private struct BindingsTab: View {
                 }
             }
             .padding(12)
-            .frame(minWidth: 420)
+            .frame(minWidth: 340, idealWidth: 480, maxWidth: .infinity, alignment: .leading)
+            .layoutPriority(1)
 
             Group {
                 if let layer, let binding = layer.bindings.first(where: { $0.id == selectedBinding }) {
@@ -278,7 +299,8 @@ private struct BindingsTab: View {
                     ContentUnavailableView("Select a Binding", systemImage: "hand.tap", description: Text("Choose a row, or add a binding and press a controller button."))
                 }
             }
-            .frame(minWidth: 300, idealWidth: 360)
+            .frame(minWidth: 260, idealWidth: 340, maxWidth: 420, alignment: .leading)
+            .layoutPriority(0)
             .padding(16)
         }
         .onAppear {
@@ -306,7 +328,7 @@ private struct BindingsTab: View {
             VStack(alignment: .leading, spacing: 14) {
                 Text(binding.button.displayName)
                     .font(.headline)
-                HStack {
+                HStack(spacing: 8) {
                     Picker("Button", selection: Binding(
                         get: { binding.button.id },
                         set: { id in
@@ -324,10 +346,13 @@ private struct BindingsTab: View {
                             Text(button.displayName).tag(button.id)
                         }
                     }
+                    .frame(minWidth: 140)
+                    .layoutPriority(1)
                     Button(model.captureBindingID == binding.id ? "Listening…" : "Capture") {
                         model.editingLayerID = layer.id
                         model.beginCapture(bindingID: binding.id)
                     }
+                    .fixedSize(horizontal: true, vertical: false)
                 }
                 ActionEditor(
                     action: binding.action,
@@ -352,12 +377,13 @@ private struct BindingsTab: View {
                 Text("Base layer is always on. Other layers replace it while they are active.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             } else {
                 Picker("Activation", selection: activationKind(layer)) {
                     Text("Hold").tag("hold")
                     Text("Toggle").tag("toggle")
                 }
-                .frame(width: 160)
+                .frame(minWidth: 120, idealWidth: 160)
                 Picker("Modifier", selection: activatorBinding(layer)) {
                     ForEach(ControllerButton.catalog, id: \.id) { button in
                         Text(button.displayName).tag(button.id)
@@ -551,13 +577,16 @@ private struct PointerTab: View {
     }
 
     private func slider(_ title: String, value: Double, range: ClosedRange<Double>, set: @escaping (Double) -> Void) -> some View {
-        HStack {
+        HStack(spacing: 8) {
             Text(title)
-                .frame(width: 120, alignment: .leading)
+                .lineLimit(1)
+                .frame(minWidth: 72, idealWidth: 120, alignment: .leading)
+                .layoutPriority(1)
             Slider(value: Binding(get: { value }, set: set), in: range)
             Text(value, format: .number.precision(.fractionLength(0...2)))
-                .frame(width: 64, alignment: .trailing)
+                .frame(minWidth: 36, idealWidth: 56, alignment: .trailing)
                 .foregroundStyle(.secondary)
+                .layoutPriority(1)
         }
     }
 }
@@ -631,7 +660,8 @@ private struct RadialTab: View {
                 }
                 .padding(8)
             }
-            .frame(minWidth: 200, idealWidth: 240)
+            .frame(minWidth: 180, idealWidth: 220, maxWidth: 280)
+            .layoutPriority(1)
             if let menu {
                 Form {
                     TextField("Name", text: Binding(
@@ -700,6 +730,7 @@ private struct RadialTab: View {
                     .disabled(menu.items.count >= ProfileSanitizer.maxRadialItems)
                 }
                 .formStyle(.grouped)
+                .frame(minWidth: 280, maxWidth: .infinity, alignment: .leading)
             } else {
                 ContentUnavailableView(
                     "No Radial Menu",

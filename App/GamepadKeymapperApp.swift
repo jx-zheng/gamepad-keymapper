@@ -46,8 +46,8 @@ enum EditorWindow {
         let host = NSHostingController(rootView: EditorView().environmentObject(model))
         let window = NSWindow(contentViewController: host)
         window.title = "Gamepad Keymapper"
-        window.setContentSize(NSSize(width: 1100, height: 720))
-        window.minSize = NSSize(width: 880, height: 580)
+        window.setContentSize(NSSize(width: 1180, height: 740))
+        window.minSize = NSSize(width: 1000, height: 640)
         window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
         window.titlebarAppearsTransparent = false
         window.isReleasedWhenClosed = false

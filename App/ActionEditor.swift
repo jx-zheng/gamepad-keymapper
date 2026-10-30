@@ -185,7 +185,7 @@ struct ActionEditor: View {
                 get: { value },
                 set: { set($0.isFinite ? min(4000, max(-4000, $0)) : 0) }
             ), format: .number)
-            .frame(width: 90)
+            .frame(minWidth: 72, idealWidth: 90, maxWidth: 120)
         }
     }
 
