@@ -34,7 +34,7 @@ Requirements: macOS 14 or later, and Xcode 15 or later.
 3. The app is a menu-bar item (`LSUIElement`). Open **Editor** from the menu if the window does not appear.
 4. On first launch, use **Open Accessibility Settings**, enable Gamepad Keymapper, then **Check Again**.
 
-Debug builds sign with the Apple Development identity for team `LKLHZWRD5Y` (`Apple Development: k_zheng00@icloud.com`) so the Accessibility grant survives rebuilds. Ad-hoc signing (`CODE_SIGN_IDENTITY` is `-`, and no `DEVELOPMENT_TEAM`) is only the fallback when that certificate is not in the keychain. An ad-hoc rebuild changes the code signature, so macOS treats it as a different app and the old Accessibility row stops matching. The app target compiles the core sources directly, so the app does not import a separate module.
+Debug builds sign with the Apple Development identity for the configured `DEVELOPMENT_TEAM` in the Xcode project so the Accessibility grant survives rebuilds. Ad-hoc signing (`CODE_SIGN_IDENTITY` is `-`, and no `DEVELOPMENT_TEAM`) is only the fallback when that certificate is not in the keychain. An ad-hoc rebuild changes the code signature, so macOS treats it as a different app and the old Accessibility row stops matching. The app target compiles the core sources directly, so the app does not import a separate module.
 
 ```bash
 xcodebuild -project GamepadKeymapper.xcodeproj -scheme GamepadKeymapper -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO build
