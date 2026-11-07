@@ -94,12 +94,6 @@ With nothing pinned, the default profile stays active until another profile list
 | Right stick | Scroll |
 | ZL / LT | Gyro pointer, off until you enable it |
 
-![Pointer and gyro settings](docs/screenshots/pointer.png)
-
-![Radial menu editor](docs/screenshots/radial.png)
-
-![Accessibility onboarding](docs/screenshots/permissions.png)
-
 Profiles and settings stay on this Mac:
 
 ```text
