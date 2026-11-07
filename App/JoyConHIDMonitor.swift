@@ -82,7 +82,12 @@ final class JoyConHIDMonitor {
         let pad = HIDPad(side: side, device: device)
         pad.owner = self
         pads[id] = pad
-        IOHIDDeviceOpen(device, IOOptionBits(kIOHIDOptionsTypeNone))
+        let opened = IOHIDDeviceOpen(device, IOOptionBits(kIOHIDOptionsTypeNone))
+        if opened != kIOReturnSuccess {
+            // Still register. Manager-level input reports can arrive when device open is denied,
+            // and skipping registration would drop L/R and ZL/ZR with no other signal.
+            log.error("Joy-Con HID device open failed: \(opened, privacy: .public)")
+        }
         pad.register()
         log.info("Joy-Con HID \(side == .left ? "L" : "R", privacy: .public) attached")
     }

@@ -443,7 +443,7 @@ final class AppModel: ObservableObject {
         panel.prompt = "Import"
         guard panel.runModal() == .OK, let url = panel.url else { return }
         do {
-            let data = try Data(contentsOf: url)
+            let data = try ProfileCodec.readBounded(url)
             let report = try ProfileCodec.importDocument(data)
             let merged = document.merging(report.document)
             let sanitized = try ProfileSanitizer.sanitize(merged)
@@ -541,7 +541,13 @@ final class AppModel: ObservableObject {
         guard !suppressAutosave else { return }
         persistTask?.cancel()
         persistTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: 300_000_000)
+            // A cancelled sleep throws. Swallowing that error used to save immediately,
+            // so every keystroke wrote profiles.json instead of waiting out the debounce.
+            do {
+                try await Task.sleep(nanoseconds: 300_000_000)
+            } catch {
+                return
+            }
             await MainActor.run { self?.persistNow() }
         }
     }
@@ -549,7 +555,11 @@ final class AppModel: ObservableObject {
     private func schedulePush() {
         pushTask?.cancel()
         pushTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: 50_000_000)
+            do {
+                try await Task.sleep(nanoseconds: 50_000_000)
+            } catch {
+                return
+            }
             await MainActor.run { self?.pushProfile() }
         }
     }

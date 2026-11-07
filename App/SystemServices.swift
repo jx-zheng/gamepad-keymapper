@@ -131,6 +131,18 @@ final class ShortcutRunner {
 
 enum AppLauncher {
     static func open(_ launch: AppLaunch, status: @escaping (String) -> Void) {
+        let open = {
+            Self.openOnMain(launch, status: status)
+        }
+        if Thread.isMainThread {
+            open()
+        } else {
+            DispatchQueue.main.async(execute: open)
+        }
+    }
+
+    /// `NSWorkspace` activation belongs on the main thread. Mapping calls this from its queue.
+    private static func openOnMain(_ launch: AppLaunch, status: @escaping (String) -> Void) {
         let workspace = NSWorkspace.shared
         let url: URL?
         if let bundle = launch.bundleIdentifier?.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -181,7 +193,9 @@ final class FrontmostAppMonitor {
 
     private func consider(_ app: NSRunningApplication?) {
         guard let app, app.activationPolicy == .regular else { return }
-        if app.bundleIdentifier == Bundle.main.bundleIdentifier { return }
+        // A process with no bundle id must not compare equal to this app. Optional equality
+        // treats nil == nil as true, which would ignore that app and keep the previous profile.
+        if let bundle = app.bundleIdentifier, bundle == Bundle.main.bundleIdentifier { return }
         onChange?(app.bundleIdentifier, app.localizedName)
     }
 }

@@ -2,6 +2,8 @@
 .build/
 .swiftpm/
 DerivedData/
+build/
+*.dSYM
 *.xcuserstate
 xcuserdata/
 *.xcodeproj/xcuserdata/

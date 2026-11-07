@@ -30,7 +30,7 @@ struct StickDigitalizer: Equatable {
 
     mutating func update(x: Double, y: Double, side: StickSide) -> Change {
         let zone = min(0.95, max(0, deadzone))
-        let release = min(releaseZone, zone)
+        let release = min(zone, max(0, releaseZone))
         let axes: [(id: String, magnitude: Double)] = [
             (side.buttonID(.up), y),
             (side.buttonID(.right), x),
@@ -41,7 +41,9 @@ struct StickDigitalizer: Equatable {
         var released: [ControllerButton] = []
         for axis in axes {
             let isDown = down.contains(axis.id)
-            let active = axis.magnitude >= (isDown ? release : zone)
+            // A resting axis has magnitude 0. `>= 0` would latch every direction when the
+            // deadzone or release zone is 0, and the key would never come back up.
+            let active = axis.magnitude > 0 && axis.magnitude >= (isDown ? release : zone)
             if active && !isDown {
                 down.insert(axis.id)
                 pressed.append(ControllerButton(id: axis.id))

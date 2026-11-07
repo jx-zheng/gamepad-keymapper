@@ -518,8 +518,55 @@ final class MappingTests: XCTestCase {
         XCTAssertEqual(pressed.pressed, [.leftStickUp])
         let held = digitalizer.update(x: 0, y: 0.4, side: .left)
         XCTAssertTrue(held.pressed.isEmpty && held.released.isEmpty)
+        let atRelease = digitalizer.update(x: 0, y: 0.3, side: .left)
+        XCTAssertTrue(atRelease.pressed.isEmpty && atRelease.released.isEmpty)
         let released = digitalizer.update(x: 0, y: 0.2, side: .left)
         XCTAssertEqual(released.released, [.leftStickUp])
+    }
+
+    func testZeroDeadzoneDoesNotLatchDirectionsAtRest() {
+        var digitalizer = StickDigitalizer(deadzone: 0, releaseZone: 0)
+        let rest = digitalizer.update(x: 0, y: 0, side: .left)
+        XCTAssertTrue(rest.pressed.isEmpty && rest.released.isEmpty)
+        let pressed = digitalizer.update(x: 0, y: 1, side: .left)
+        XCTAssertEqual(pressed.pressed, [.leftStickUp])
+        let released = digitalizer.update(x: 0, y: 0, side: .left)
+        XCTAssertEqual(released.released, [.leftStickUp])
+        XCTAssertTrue(digitalizer.heldIDs.isEmpty)
+
+        var profile = Profile.starter(name: "Digital", isDefault: true)
+        profile.sticks = .digital
+        profile.layers[0].bindings.append(
+            ButtonBinding(button: .leftStickUp, action: .keyboard(.hold("upArrow")))
+        )
+        var interpreter = MappingInterpreter(debounce: 0, stickDeadzone: 0, stickReleaseZone: 0)
+        let idle = interpreter.ingestStick(
+            controller: "c", category: nil, side: .left, x: 0, y: 0, time: 0, profile: profile
+        )
+        XCTAssertFalse(idle.contains { if case .actionBegan = $0 { return true }; return false })
+        let held = interpreter.ingestStick(
+            controller: "c", category: nil, side: .left, x: 0, y: 1, time: 0.1, profile: profile
+        )
+        XCTAssertTrue(held.contains(.actionBegan(.keyboard(.hold("upArrow")))))
+        let up = interpreter.ingestStick(
+            controller: "c", category: nil, side: .left, x: 0, y: 0, time: 0.2, profile: profile
+        )
+        XCTAssertTrue(up.contains(.actionEnded(.keyboard(.hold("upArrow")))))
+    }
+
+    func testResetForgetsAPressWhoseReleaseWasLost() {
+        let profile = Profile.starter(name: "S", isDefault: true)
+        var interpreter = MappingInterpreter(debounce: 0)
+        XCTAssertEqual(
+            interpreter.ingestButton(controller: "c", category: nil, button: .a, rawPressed: true, time: 0, profile: profile),
+            [.actionBegan(.mouseClick(.left, clicks: 1))]
+        )
+        let ended = interpreter.resetInteractions()
+        XCTAssertTrue(ended.contains(.actionEnded(.mouseClick(.left, clicks: 1))))
+        XCTAssertEqual(
+            interpreter.ingestButton(controller: "c", category: nil, button: .a, rawPressed: true, time: 0.2, profile: profile),
+            [.actionBegan(.mouseClick(.left, clicks: 1))]
+        )
     }
 
     func testGyroDeadzoneAndScale() {

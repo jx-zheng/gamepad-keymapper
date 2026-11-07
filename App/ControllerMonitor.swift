@@ -288,6 +288,8 @@ private final class ControllerSession {
     /// Last edge sent for an analog trigger, so value and pressed callbacks share one press.
     private var triggerLatched: [String: Bool] = [:]
     private var motionInstalled = false
+    /// Set on disconnect so a motion callback queued earlier cannot turn the sensors back on.
+    private var detached = false
     private let lock = NSLock()
     /// Serial queue GameController uses for this pad. Never the main queue.
     let handlerQueue: DispatchQueue
@@ -322,7 +324,7 @@ private final class ControllerSession {
         if orientation != nil {
             micro?.reportsAbsoluteDpadValues = true
         }
-        // Kevin’s dump: lone Joy-Con (R) is micro-only. Shoulders are SL/SR. R and ZR are not in the profile.
+        // A lone Joy-Con (R) is micro-only. Shoulders are SL/SR. R and ZR are not in the profile.
         railShouldersAreSL = orientation != nil && extended == nil
         if orientation != nil {
             let buttonKeys = profile.buttons.keys.sorted().joined(separator: ", ")
@@ -377,38 +379,24 @@ private final class ControllerSession {
 
     func setMotionHandler(enabled: Bool) {
         lock.lock()
+        if detached {
+            lock.unlock()
+            return
+        }
         guard enabled != motionInstalled else {
             lock.unlock()
             return
         }
         motionInstalled = enabled
         lock.unlock()
-        let controller = controller
         handlerQueue.async { [weak self] in
-            guard let self, let motion = controller.motion else { return }
-            if motion.sensorsRequireManualActivation {
-                motion.sensorsActive = enabled
-            }
-            if enabled {
-                motion.valueChangedHandler = { [weak self] motion in
-                    guard let self, motion.hasRotationRate else { return }
-                    let rate = motion.rotationRate
-                    self.owner?.enqueueMotion(InputBatch.Motion(
-                        sessionID: self.sessionID,
-                        category: self.category,
-                        rotationX: rate.x,
-                        rotationY: rate.y,
-                        time: CACurrentMediaTime()
-                    ))
-                }
-            } else {
-                motion.valueChangedHandler = nil
-            }
+            self?.applyMotionHandler()
         }
     }
 
     func detach() {
         lock.lock()
+        detached = true
         motionInstalled = false
         let buttons = self.buttons
         let dpads = self.dpads
@@ -418,6 +406,9 @@ private final class ControllerSession {
         self.axes.removeAll()
         self.triggerLatched.removeAll()
         lock.unlock()
+        // The sessions map drops this object when detach returns, and every other callback
+        // captures self weakly. Hold the controller so sensors still turn off if self is gone.
+        // A queued install still has to pass the detached flag in applyMotionHandler.
         let controller = controller
         handlerQueue.async {
             if let motion = controller.motion {
@@ -436,6 +427,33 @@ private final class ControllerSession {
             for axis in axes {
                 axis.valueChangedHandler = nil
             }
+        }
+    }
+
+    /// Reads the installed flag on the handler queue. A block queued before disconnect must not
+    /// reinstall the callback after `detach` has already cleared it.
+    private func applyMotionHandler() {
+        lock.lock()
+        let install = motionInstalled && !detached
+        lock.unlock()
+        guard let motion = controller.motion else { return }
+        if motion.sensorsRequireManualActivation {
+            motion.sensorsActive = install
+        }
+        if install {
+            motion.valueChangedHandler = { [weak self] motion in
+                guard let self, motion.hasRotationRate else { return }
+                let rate = motion.rotationRate
+                self.owner?.enqueueMotion(InputBatch.Motion(
+                    sessionID: self.sessionID,
+                    category: self.category,
+                    rotationX: rate.x,
+                    rotationY: rate.y,
+                    time: CACurrentMediaTime()
+                ))
+            }
+        } else {
+            motion.valueChangedHandler = nil
         }
     }
 
