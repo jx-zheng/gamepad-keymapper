@@ -406,8 +406,17 @@ private final class ControllerSession {
         self.axes.removeAll()
         self.triggerLatched.removeAll()
         lock.unlock()
-        handlerQueue.async { [weak self] in
-            self?.applyMotionHandler()
+        // The sessions map drops this object when detach returns, and every other callback
+        // captures self weakly. Hold the controller so sensors still turn off if self is gone.
+        // A queued install still has to pass the detached flag in applyMotionHandler.
+        let controller = controller
+        handlerQueue.async {
+            if let motion = controller.motion {
+                if motion.sensorsRequireManualActivation {
+                    motion.sensorsActive = false
+                }
+                motion.valueChangedHandler = nil
+            }
             for button in buttons {
                 button.pressedChangedHandler = nil
                 button.valueChangedHandler = nil
