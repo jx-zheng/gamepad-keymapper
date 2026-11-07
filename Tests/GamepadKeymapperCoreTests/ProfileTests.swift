@@ -196,6 +196,15 @@ final class ProfileTests: XCTestCase {
         XCTAssertEqual(report.document.profiles.filter(\.isDefault).count, 1)
     }
 
+    func testReadBoundedRejectsAnOversizedFile() throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("oversized-\(UUID().uuidString).json")
+        try Data(repeating: 1, count: 32).write(to: url)
+        defer { try? FileManager.default.removeItem(at: url) }
+        XCTAssertThrowsError(try ProfileCodec.readBounded(url, maxBytes: 16))
+        let data = try ProfileCodec.readBounded(url, maxBytes: 32)
+        XCTAssertEqual(data.count, 32)
+    }
+
     func testHardCaps() throws {
         XCTAssertThrowsError(try ProfileSanitizer.checkByteCount(ProfileSanitizer.maxBytes + 1))
         let profiles = (0..<41).map { Profile.starter(name: "P\($0)", isDefault: $0 == 0) }

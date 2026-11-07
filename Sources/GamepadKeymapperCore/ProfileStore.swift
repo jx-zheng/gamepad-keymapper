@@ -17,7 +17,7 @@ struct ProfileStore {
         guard FileManager.default.fileExists(atPath: profilesURL.path) else {
             return SampleProfiles.document()
         }
-        let data = try Data(contentsOf: profilesURL)
+        let data = try ProfileCodec.readBounded(profilesURL)
         return try ProfileCodec.importDocument(data).document
     }
 
@@ -32,7 +32,7 @@ struct ProfileStore {
         guard FileManager.default.fileExists(atPath: settingsURL.path) else {
             return .initial
         }
-        let data = try Data(contentsOf: settingsURL)
+        let data = try ProfileCodec.readBounded(settingsURL)
         let settings = try ProfileCodec.decodeSettings(data)
         return ProfileSanitizer.sanitizeSettings(settings)
     }

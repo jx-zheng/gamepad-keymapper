@@ -24,6 +24,8 @@ final class MappingEngine {
     private var monitor: ControllerMonitor!
     private var synthesizer: InputSynthesizer!
     private var debounceTimer: DispatchSourceTimer?
+    /// Absolute time the debounce timer is armed for. Pointer pumping must not rebuild it every tick.
+    private var debounceWake: TimeInterval?
     private var pointerTimer: DispatchSourceTimer?
     private var uiTimer: DispatchSourceTimer?
     private var devicesVisible = false
@@ -66,6 +68,7 @@ final class MappingEngine {
         let finish = {
             self.debounceTimer?.cancel()
             self.debounceTimer = nil
+            self.debounceWake = nil
             self.pointerTimer?.cancel()
             self.pointerTimer = nil
             self.uiTimer?.cancel()
@@ -94,10 +97,16 @@ final class MappingEngine {
     func setProfile(_ profile: Profile?) {
         queue.async {
             self.lastMotionTime.removeAll()
-            let changed = self.profile?.id != profile?.id
+            let previous = self.profile
             self.profile = profile
-            if changed {
-                self.perform(self.interpreter.endSustainedActions())
+            if let profile {
+                if previous?.id != profile.id {
+                    self.perform(self.interpreter.endSustainedActions())
+                }
+            } else if previous != nil {
+                // Edges are ignored while nothing is selected. Leaving the debouncer pressed
+                // made the next real press do nothing until an extra release.
+                self.perform(self.interpreter.resetInteractions())
             }
             self.refreshMotion()
         }
@@ -330,11 +339,11 @@ final class MappingEngine {
 
     private func armTimers() {
         if let wake = interpreter.nextWakeTime() {
-            let delay = max(0, wake - CACurrentMediaTime())
-            scheduleDebounce(after: delay)
-        } else {
+            scheduleDebounce(at: wake)
+        } else if debounceTimer != nil {
             debounceTimer?.cancel()
             debounceTimer = nil
+            debounceWake = nil
         }
         if mappingEnabled && interpreter.needsPointerPump {
             startPointerPumpIfNeeded()
@@ -344,13 +353,19 @@ final class MappingEngine {
         }
     }
 
-    private func scheduleDebounce(after delay: TimeInterval) {
+    private func scheduleDebounce(at wake: TimeInterval) {
+        if debounceTimer != nil, let debounceWake, abs(debounceWake - wake) < 0.0005 {
+            return
+        }
         debounceTimer?.cancel()
+        debounceWake = wake
+        let delay = max(0, wake - CACurrentMediaTime())
         let timer = DispatchSource.makeTimerSource(queue: queue)
         timer.schedule(deadline: .now() + delay, leeway: .milliseconds(2))
         timer.setEventHandler { [weak self] in
             guard let self else { return }
             self.debounceTimer = nil
+            self.debounceWake = nil
             guard let profile = self.profile else { return }
             let effects = self.interpreter.poll(time: CACurrentMediaTime(), profile: profile)
             self.perform(effects)

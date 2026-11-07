@@ -34,15 +34,15 @@ Requirements: macOS 14 or later, and Xcode 15 or later.
 3. The app is a menu-bar item (`LSUIElement`). Open **Editor** from the menu if the window does not appear.
 4. On first launch, use **Open Accessibility Settings**, enable Gamepad Keymapper, then **Check Again**.
 
-Debug builds sign with the Apple Development identity for the configured `DEVELOPMENT_TEAM` in the Xcode project so the Accessibility grant survives rebuilds. Ad-hoc signing (`CODE_SIGN_IDENTITY` is `-`, and no `DEVELOPMENT_TEAM`) is only the fallback when that certificate is not in the keychain. An ad-hoc rebuild changes the code signature, so macOS treats it as a different app and the old Accessibility row stops matching. The app target compiles the core sources directly, so the app does not import a separate module.
+The project signs ad-hoc (`CODE_SIGN_IDENTITY` is `-`, manual signing, no `DEVELOPMENT_TEAM`) so a checkout runs without a personal Apple team. An ad-hoc rebuild changes the code signature, so macOS treats it as a different app and the previous Accessibility row stops matching. To keep that grant across rebuilds, select your team on the Gamepad Keymapper target, switch signing to Automatic, and use the Apple Development identity. The app target compiles the core sources directly, so the app does not import a separate module.
 
 ```bash
 xcodebuild -project GamepadKeymapper.xcodeproj -scheme GamepadKeymapper -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO build
 ```
 
-That command needs macOS and Xcode. It cannot be run in a Linux environment. `CODE_SIGNING_ALLOWED=NO` is the CI override. A local Run from Xcode uses the Apple Development signature above. After you allow Accessibility, quit and reopen the app. macOS often ignores the new trust until the next launch.
+That command needs macOS and Xcode. It cannot be run in a Linux environment. `CODE_SIGNING_ALLOWED=NO` is the CI override. A local Run from Xcode uses the ad-hoc signature above (Sign to Run Locally). After you allow Accessibility, quit and reopen the app. macOS often ignores the new trust until the next launch.
 
-Release builds should enable the hardened runtime and sign with a Developer ID. Without the development certificate, clear `DEVELOPMENT_TEAM` and set `CODE_SIGN_IDENTITY` to `-`.
+Release builds in this repo stay ad-hoc and do not enable the hardened runtime. For a copy you hand to someone else, sign with a Developer ID and turn the hardened runtime on.
 
 Logic tests do not need a Mac:
 
@@ -58,6 +58,8 @@ bash Scripts/security-scan.sh
 macOS requires Accessibility before a process can create keyboard and mouse events. Gamepad Keymapper uses that permission only to post the actions you configured. It does not install an event tap and it does not read what you type. The radial menu is drawn by the app and can open without Accessibility. Keys, clicks, and pointer moves cannot. After you allow Gamepad Keymapper, quit and reopen it; macOS often ignores the new trust until then. The editor shows a banner, and the menu bar names the last button received, so a press that does nothing is not a missing controller.
 
 Shortcuts and app launch work without Accessibility. Keyboard, mouse, scroll, text, and media keys do not.
+
+A lone Joy-Con’s physical L/R and ZL/ZR are not in the GameController profile, so the app reads them from the HID report. macOS may ask for Input Monitoring before those two buttons arrive. The other buttons, sticks, and the radial menu do not need it. If the prompt was denied, the Devices page still lists the controller and the rest of the pad keeps working.
 
 The menu-bar app sets `GCController.shouldMonitorBackgroundEvents` so GameController keeps delivering input while another app is frontmost.
 

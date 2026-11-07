@@ -63,4 +63,26 @@ enum ProfileCodec {
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
         return try encoder.encode(settings)
     }
+
+    /// Reads a profile or settings file without pulling an oversized file into memory first.
+    static func readBounded(_ url: URL, maxBytes: Int = ProfileSanitizer.maxBytes) throws -> Data {
+        let size = fileByteCount(url) ?? 0
+        if size > maxBytes {
+            throw ProfileCodecError.message("Profile file is larger than \(maxBytes) bytes.")
+        }
+        let data = try Data(contentsOf: url)
+        if data.count > maxBytes {
+            throw ProfileCodecError.message("Profile file is larger than \(maxBytes) bytes.")
+        }
+        return data
+    }
+
+    /// `FileManager` reports the size as `NSNumber` on Apple platforms and as an integer on Linux.
+    private static func fileByteCount(_ url: URL) -> Int? {
+        guard let attrs = try? FileManager.default.attributesOfItem(atPath: url.path) else { return nil }
+        if let number = attrs[.size] as? NSNumber { return number.intValue }
+        if let int = attrs[.size] as? Int { return int }
+        if let uint = attrs[.size] as? UInt64 { return Int(min(uint, UInt64(Int.max))) }
+        return nil
+    }
 }
